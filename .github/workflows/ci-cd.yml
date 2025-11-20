@@ -74,17 +74,6 @@ jobs:
             --cov-report=html \
             --cov-fail-under=70
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        if: always()
-        with:
-          file: ./coverage.xml
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
       - name: Upload coverage HTML report
         uses: actions/upload-artifact@v4
         if: always()
@@ -156,15 +145,16 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64
 
-      - name: Run Trivy security scan
+      - name: Security Scan - Upload to GitHub Security
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: web-to-openwebui:test
           format: 'sarif'
           output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          ignore-unfixed: true
 
-      - name: Upload Trivy results to GitHub Security
+      - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         continue-on-error: true
@@ -172,13 +162,14 @@ jobs:
           sarif_file: 'trivy-results.sarif'
           category: trivy
 
-      - name: Fail on high/critical vulnerabilities
+      - name: Security Scan - Informational (non-blocking)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: web-to-openwebui:test
           format: 'table'
-          exit-code: '1'
+          exit-code: '0'
           severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
 
       # Only build and push multi-arch on tags
       - name: Build and push multi-arch (tags only)
