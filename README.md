@@ -51,8 +51,6 @@ mkdir webowui && cd webowui
 
 ```bash
 cat > docker-compose.yml << 'EOF'
-version: '3.8'
-
 services:
   webowui:
     image: ghcr.io/jhomen368/web-to-openwebui:latest

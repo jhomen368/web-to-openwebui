@@ -5,7 +5,7 @@ Thank you for contributing to web-to-openwebui. This guide covers environment se
 ## Table of Contents
 
 - [Getting Started](#getting-started)
-- [Virtual Environment (CRITICAL)](#virtual-environment-critical)
+- [Virtual Environment](#virtual-environment)
 - [Project Structure](#project-structure)
 - [Running Tests](#running-tests)
 - [Code Quality Tools](#code-quality-tools)
@@ -101,11 +101,7 @@ webowui sites
 
 ---
 
-## Virtual Environment (CRITICAL)
-
-### ⚠️ ALWAYS Use Virtual Environment
-
-**ALL Python commands MUST be run through the virtual environment.** This is a strict requirement for this project.
+## Virtual Environment
 
 ### Correct Usage
 
@@ -1116,8 +1112,7 @@ strategy:
 **Before asking:**
 1. Check existing documentation
 2. Search closed issues
-3. Review memory bank files (`.kilocode/rules/memory-bank/`)
-4. Search GitHub discussions
+3. Search GitHub discussions
 
 **Where to ask:**
 - 💬 [GitHub Discussions](https://github.com/jhomen368/web-to-openwebui/discussions) - Questions

@@ -52,7 +52,6 @@ htmlcov/
 .tox/
 
 # pre-commit
-.pre-commit-config.yaml
 .coveragerc
 pytest.ini
 
