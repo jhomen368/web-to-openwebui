@@ -1,0 +1,68 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Environment
+.env
+.env.local
+
+# Runtime data (single-mount architecture)
+# All persistent data: outputs, logs, and user configs
+data/
+
+# BUT track template examples in source code
+!webowui/config/examples/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.kilocode/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# pre-commit
+.pre-commit-config.yaml
+.coveragerc
+pytest.ini
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.log
+
+# Docker
+docker-compose.override.yml
+.docker/

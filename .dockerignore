@@ -1,0 +1,62 @@
+# Version Control
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+
+# Python
+venv/
+env/
+ENV/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+
+# Testing
+tests/
+.pytest_cache/
+.coverage
+.coveragerc
+htmlcov/
+.tox/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.kilocode/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Runtime data (local test runs - will be volume-mounted in container)
+data/
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# CI/CD
+.github/
+
+# Development
+Makefile
+requirements-dev.txt
+.pre-commit-config.yaml
+pyproject.toml
+scripts/
+pytest.ini

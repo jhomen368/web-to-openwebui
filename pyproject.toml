@@ -1,0 +1,155 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "web-to-openwebui"
+version = "0.9.0"
+description = "Flexible web content scraping for OpenWebUI Knowledge databases"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Jason Homen", email = "jason@example.com"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+keywords = ["openwebui", "scraping", "knowledge-base", "rag", "ai"]
+dependencies = [
+    "aiohttp>=3.9.0",
+    "apscheduler>=3.10.0",
+    "click>=8.1.0",
+    "crawl4ai>=0.7.0",
+    "python-dotenv>=1.0.0",
+    "python-slugify>=8.0.0",
+    "pyyaml>=6.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.0",
+    "black>=23.0.0",
+    "mypy>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/jhomen368/web-to-openwebui"
+Repository = "https://github.com/jhomen368/web-to-openwebui"
+Issues = "https://github.com/jhomen368/web-to-openwebui/issues"
+Documentation = "https://github.com/jhomen368/web-to-openwebui/tree/main/docs"
+
+[project.scripts]
+web-to-openwebui = "webowui.cli:cli"
+webowui = "webowui.cli:cli"
+wto = "webowui.cli:cli"
+
+[tool.setuptools]
+packages = ["webowui"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "W",   # pycodestyle warnings
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501",  # Line too long (handled by black)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # Allow assert in tests
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  \.eggs
+  | \.git
+  | \.mypy_cache
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Start lenient
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--cov=webowui",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-fail-under=70",
+]
+markers = [
+    "unit: Unit tests (fast, isolated)",
+    "integration: Integration tests (module interactions)",
+    "e2e: End-to-end tests (full workflows)",
+    "requires_openwebui: Tests that need OpenWebUI instance",
+    "slow: Slow-running tests (>5 seconds)",
+]
+
+[tool.coverage.run]
+source = ["webowui"]
+omit = ["*/tests/*", "*/__pycache__/*", "*/venv/*"]
+branch = true
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+    "@abstractproperty",
+    "except ImportError",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "venv"]
+skips = ["B101"]  # B101: assert_used (we use asserts in tests, filtered by exclude_dirs)

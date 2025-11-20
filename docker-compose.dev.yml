@@ -1,0 +1,59 @@
+# Development Docker Compose for web-to-openwebui
+# Includes both scraper (local build) and OpenWebUI (for testing uploads)
+
+services:
+  # OpenWebUI instance for testing uploads
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:latest
+    container_name: openwebui-dev
+    ports:
+      - "3000:8080"
+    volumes:      
+      # Single mount for all persistent data
+      - open-webui-data:/app/backend/data
+    environment:
+      - ENV=dev
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Scraper built from local source
+  webowui:
+    image: webowui:dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+    pull_policy: never 
+    container_name: webowui-dev
+    
+    environment:
+      # Point to local OpenWebUI instance
+      - OPENWEBUI_BASE_URL=http://openwebui-dev:8080
+      - OPENWEBUI_API_KEY=${OPENWEBUI_API_KEY}
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+      - TZ=${TZ:-America/Los_Angeles}
+    
+    volumes:
+      # Single mount for all persistent data
+      - ./data:/app/data
+    
+    depends_on:
+      openwebui:
+        condition: service_healthy
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "python", "-m", "webowui", "health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  open-webui-data:
+    driver: local

@@ -1,0 +1,409 @@
+# ============================================================================
+# COMPREHENSIVE SITE CONFIGURATION REFERENCE
+# ============================================================================
+#
+# This file documents ALL available configuration options for web-to-openwebui.
+# Use this as a reference to understand what's possible.
+#
+# For practical use, copy a simpler template:
+#   - simple_test.yml.example (minimal, good for learning)
+#   - mediawiki.yml.example (optimized for MediaWiki sites)
+#
+# DOCUMENTATION:
+#   https://github.com/jhomen368/web-to-openwebui
+#
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# SITE INFORMATION
+# ----------------------------------------------------------------------------
+# Basic metadata about the site you're scraping
+site:
+  # REQUIRED: Internal identifier used in CLI commands and file paths
+  # Rules: lowercase, no spaces, alphanumeric and hyphens only
+  # Example: "my-wiki", "company-docs", "game-guide"
+  name: "example_site"
+  
+  # REQUIRED: Human-readable name displayed in logs and reports
+  # Can contain spaces, capitals, any characters
+  display_name: "Example Site"
+  
+  # REQUIRED: Root URL of the website
+  # All scraped URLs must start with this base URL
+  # Must include protocol (http:// or https://)
+  base_url: "https://example.com"
+  
+  # REQUIRED: Starting URLs where scraping begins
+  # List of full URLs (not relative paths)
+  # The scraper starts here and follows links according to strategy
+  start_urls:
+    - "https://example.com/wiki/Main_Page"
+    - "https://example.com/wiki/Getting_Started"
+
+# ----------------------------------------------------------------------------
+# CRAWLING STRATEGY
+# ----------------------------------------------------------------------------
+# Defines how the scraper explores and collects pages
+strategy:
+  # REQUIRED: Strategy type
+  # Options:
+  #   - "recursive": Follow all links matching patterns (most common)
+  #   - "selective": Only scrape explicit URLs, don't follow links
+  #   - "depth_limited": Strict depth enforcement with link following
+  type: "recursive"
+  
+  # REQUIRED: Maximum link depth from start URLs
+  # depth=0: Only scrape start_urls (no link following)
+  # depth=1: Scrape start_urls + all direct links from them
+  # depth=2: Go two levels deep from start_urls
+  # depth=3+: Deeper exploration (can result in many pages!)
+  #
+  # RECOMMENDATION: Start with depth=1 for testing, increase gradually
+  max_depth: 2
+  
+  # REQUIRED: Patterns for URLs to follow
+  # List of regular expressions (Python regex syntax)
+  # Only URLs matching these patterns will be scraped
+  # Use regex escaping: \. for literal dots, \/ for slashes
+  follow_patterns:
+    - "^https://example\\.com/wiki/.*"
+    - "^https://example\\.com/docs/.*"
+  
+  # REQUIRED: Patterns for URLs to exclude
+  # List of regular expressions
+  # URLs matching these will NOT be scraped, even if they match follow_patterns
+  # Exclude patterns take priority over follow patterns
+  exclude_patterns:
+    # Common exclusions for most sites:
+    - ".*\\.(pdf|jpg|jpeg|png|gif|zip|tar|gz)$"  # Binary files
+    - ".*\\?action=edit.*"                        # Edit pages
+    - ".*\\?action=history.*"                     # History pages
+    - ".*#.*"                                     # Fragment identifiers
+    
+    # MediaWiki-specific (if applicable):
+    - ".*Special:.*"                              # Special pages
+    - ".*User:.*"                                 # User pages
+    - ".*User_talk:.*"                            # User talk pages
+    - ".*Talk:.*"                                 # Discussion pages
+    - ".*File:.*"                                 # File description pages
+    - ".*Template:.*"                             # Template pages
+    - ".*Template_talk:.*"                        # Template discussions
+    - ".*Category:.*"                             # Category pages
+    - ".*Help:.*"                                 # Help pages
+    - ".*MediaWiki:.*"                            # MediaWiki namespace
+
+# ----------------------------------------------------------------------------
+# RATE LIMITING
+# ----------------------------------------------------------------------------
+# Controls scraping speed to respect server resources
+rate_limit:
+  # REQUIRED: Maximum requests per second
+  # Be respectful! Public sites should use 1-2 req/sec
+  # Self-hosted or approved aggressive scraping: 5-10 req/sec
+  requests_per_second: 2
+  
+  # REQUIRED: Minimum delay between requests (seconds)
+  # Additional throttling on top of requests_per_second
+  # 0.5 seconds = 500ms between requests
+  delay: 0.5
+  
+  # OPTIONAL: Maximum concurrent requests
+  # Default: 1 (sequential scraping)
+  # Higher values = faster but more server load
+  # max_concurrent_requests: 1
+
+# ----------------------------------------------------------------------------
+# CONTENT EXTRACTION
+# ----------------------------------------------------------------------------
+# Defines how content is extracted from HTML pages
+extraction:
+  # REQUIRED: CSS selector for main content area
+  # Examples:
+  #   - "body" (extract everything - default)
+  #   - "main" (common HTML5 main content)
+  #   - "article" (article content)
+  #   - "#content" (element with id="content")
+  #   - ".main-content" (element with class="main-content")
+  #   - "#mw-content-text" (MediaWiki content area)
+  content_selector: "body"
+  
+  # OPTIONAL: CSS selectors to remove before extraction
+  # List of selectors for elements to delete
+  # Useful for removing navigation, ads, sidebars
+  remove_selectors:
+    - "nav"                    # Navigation menus
+    - "header"                 # Page headers
+    - "footer"                 # Page footers
+    - ".sidebar"               # Sidebars
+    - ".advertisement"         # Ads
+    - "#toc"                   # Table of contents (if not needed)
+    - ".edit-link"             # Edit links
+    - ".social-share"          # Social sharing buttons
+
+# ----------------------------------------------------------------------------
+# FILTERS
+# ----------------------------------------------------------------------------
+# Content validation and filtering rules
+filters:
+  # OPTIONAL: Minimum content length (characters)
+  # Pages shorter than this are rejected
+  # Default: 100
+  # Helps filter out navigation pages, redirects, stubs
+  min_content_length: 100
+  
+  # OPTIONAL: Maximum content length (characters)
+  # Pages longer than this are rejected
+  # Default: 500000 (500KB of text)
+  # Safety limit to catch potential issues
+  max_content_length: 500000
+  
+  # OPTIONAL: Filter dead links
+  # Remove links to non-existent pages (404s, red links)
+  # Default: false
+  # Note: Requires additional HTTP requests to check each link
+  # filter_dead_links: false
+
+# ----------------------------------------------------------------------------
+# CONTENT CLEANING
+# ----------------------------------------------------------------------------
+# Post-processing to optimize content for embeddings
+cleaning:
+  # REQUIRED: Cleaning profile to apply
+  # Options:
+  #   - "none": No cleaning (raw markdown from crawl4ai)
+  #   - "mediawiki": Remove MediaWiki boilerplate
+  #   - "fandomwiki": Remove Fandom-specific elements (extends MediaWiki)
+  #   - "custom_profile": Your own profile in data/config/profiles/
+  profile: "none"
+  
+  # OPTIONAL: Profile-specific configuration
+  # Each profile has different options (see profile documentation)
+  config:
+    # MediaWiki profile options:
+    filter_dead_links: false                 # Remove links to non-existent pages
+    remove_citations: true                   # Remove citation markers [1], [ref]
+    remove_categories: true                  # Remove category listings
+    remove_infoboxes: true                   # Remove metadata tables at top
+    remove_external_links: true              # Remove "External Links" sections
+    remove_table_of_contents: true           # Remove auto-generated TOC
+    remove_version_history: true             # Remove version history tables
+    remove_wiki_meta: true                   # Remove wiki meta messages
+    remove_navigation_boilerplate: true      # Remove "Jump to" links
+    remove_template_links: true              # Remove [v], [t], [e] links
+
+# ----------------------------------------------------------------------------
+# OPENWEBUI INTEGRATION
+# ----------------------------------------------------------------------------
+# Configuration for uploading to OpenWebUI knowledge base
+openwebui:
+  # OPTIONAL: Knowledge base name in OpenWebUI
+  # This is the display name users will see
+  knowledge_name: "Example Site Knowledge"
+  
+  # OPTIONAL: Knowledge base ID (if using existing knowledge base)
+  # Leave blank to create new knowledge base
+  # Get this from OpenWebUI admin panel or API
+  # knowledge_id: "kb-123456"
+  
+  # OPTIONAL: Automatically upload after each scrape
+  # Default: false (manual upload via `webowui upload` command)
+  auto_upload: false
+  
+  # OPTIONAL: Preserve deleted files in OpenWebUI
+  # When a page is removed from the scrape:
+  #   - false: Remove from knowledge AND delete file (clean, default)
+  #   - true: Remove from knowledge but keep file in storage
+  # Default: false
+  preserve_deleted_files: false
+  
+  # OPTIONAL: Description for knowledge base
+  # Shown in OpenWebUI knowledge list
+  # description: "Comprehensive documentation scraped from Example.com"
+
+# ----------------------------------------------------------------------------
+# RETENTION MANAGEMENT
+# ----------------------------------------------------------------------------
+# Automatic cleanup of old scrape backups
+retention:
+  # OPTIONAL: Enable automatic retention cleanup
+  # Default: false (keep all backups forever)
+  enabled: false
+  
+  # OPTIONAL: Number of timestamped backups to keep
+  # Default: 2 (keeps last 2 backup directories)
+  # Note: current/ directory is ALWAYS kept (it's the active state)
+  # Example: keep_backups=2 keeps current/ plus 2 most recent timestamps
+  keep_backups: 2
+  
+  # OPTIONAL: Run cleanup automatically after each scrape
+  # Default: true (when retention is enabled)
+  # Set to false to only run cleanup manually via `webowui cleanup`
+  auto_cleanup: true
+
+# ----------------------------------------------------------------------------
+# SCHEDULING (Docker Daemon Mode)
+# ----------------------------------------------------------------------------
+# Automatic scraping at specified intervals
+schedule:
+  # OPTIONAL: Enable scheduled scraping
+  # Default: false (manual scraping only)
+  # Requires Docker container running in daemon mode
+  enabled: false
+  
+  # OPTIONAL: Schedule type
+  # Options:
+  #   - "cron": Unix cron syntax (most flexible)
+  #   - "interval": Fixed time intervals
+  type: "cron"
+  
+  # OPTIONAL: Cron schedule (when type="cron")
+  # Syntax: "minute hour day_of_month month day_of_week"
+  # Examples:
+  #   - "0 2 * * *"    = Every day at 2 AM
+  #   - "0 */6 * * *"  = Every 6 hours
+  #   - "0 0 * * 0"    = Every Sunday at midnight
+  #   - "30 3 * * 1"   = Every Monday at 3:30 AM
+  cron: "0 2 * * *"
+  
+  # OPTIONAL: Interval schedule (when type="interval")
+  # interval:
+  #   hours: 6          # Run every 6 hours
+  #   minutes: 0        # (additional minutes, optional)
+  
+  # OPTIONAL: Timezone for schedule
+  # Default: UTC
+  # Use IANA timezone names: "America/Los_Angeles", "Europe/London", etc.
+  timezone: "America/Los_Angeles"
+  
+  # OPTIONAL: Timeout for scrape operations (minutes)
+  # Default: 60 minutes
+  # If scrape takes longer than this, it's terminated
+  timeout_minutes: 60
+  
+  # OPTIONAL: Retry configuration for failed scrapes
+  retry:
+    enabled: true              # Enable retry on failure
+    max_attempts: 3            # Maximum retry attempts
+    delay_minutes: 15          # Wait time between retries
+
+# ============================================================================
+# CONFIGURATION ORDER & PRECEDENCE
+# ============================================================================
+#
+# 1. This YAML config file (highest priority)
+# 2. Environment variables (e.g., OPENWEBUI_API_KEY)
+# 3. Default values in code
+#
+# Environment variables needed for OpenWebUI uploads:
+#   OPENWEBUI_BASE_URL=https://your-openwebui-instance.com
+#   OPENWEBUI_API_KEY=sk-your-api-key-here
+#
+# Store these in .env file (automatically loaded) or set in shell/Docker
+#
+# ============================================================================
+
+# ============================================================================
+# VALIDATION & TESTING
+# ============================================================================
+#
+# After creating your configuration:
+#
+# 1. VALIDATE: Check configuration is valid
+#    webowui validate --site example_site
+#
+# 2. TEST SCRAPE: Run small test with depth=1
+#    Edit this file: set strategy.max_depth: 1
+#    webowui scrape --site example_site
+#
+# 3. REVIEW RESULTS: Check what was scraped
+#    webowui list --site example_site
+#    webowui show-current --site example_site
+#
+# 4. ADJUST & RETRY: Modify patterns, increase depth
+#    Edit this file, save, scrape again
+#
+# 5. PRODUCTION: Enable scheduling and auto-upload
+#    Set schedule.enabled: true
+#    Set openwebui.auto_upload: true
+#    Deploy in Docker daemon mode
+#
+# ============================================================================
+
+# ============================================================================
+# TROUBLESHOOTING
+# ============================================================================
+#
+# Too many pages scraped?
+#   - Check exclude_patterns (add more exclusions)
+#   - Reduce strategy.max_depth
+#   - Make follow_patterns more specific
+#
+# Pages missing?
+#   - Check follow_patterns (too restrictive?)
+#   - Check exclude_patterns (accidentally excluding wanted pages?)
+#   - Increase strategy.max_depth
+#
+# Content too noisy (navigation, ads)?
+#   - Add extraction.remove_selectors
+#   - Use more aggressive cleaning profile
+#   - Enable specific profile options (remove_infoboxes, etc.)
+#
+# Scraping too slow?
+#   - Increase rate_limit.requests_per_second (carefully!)
+#   - Reduce strategy.max_depth
+#   - Make patterns more selective
+#
+# Upload failing?
+#   - Check environment variables (OPENWEBUI_BASE_URL, OPENWEBUI_API_KEY)
+#   - Verify OpenWebUI instance is accessible
+#   - Check OpenWebUI API key permissions
+#   - Review logs: data/logs/web-scraper.log
+#
+# ============================================================================
+
+# ============================================================================
+# BEST PRACTICES
+# ============================================================================
+#
+# 1. Start Small: Use depth=1 for initial testing
+# 2. Test Patterns: Validate URL patterns match expected pages
+# 3. Respect Servers: Use conservative rate_limit values (1-2 req/sec)
+# 4. Clean Content: Use appropriate cleaning profiles for embeddings
+# 5. Monitor Size: Check scraped content size before large deployments
+# 6. Enable Retention: Keep backup history for rollback capability
+# 7. Schedule Wisely: Run during off-peak hours if possible
+# 8. Document Changes: Add comments when modifying configurations
+# 9. Version Control: Track config changes in git (but not .env!)
+# 10. Test Uploads: Verify OpenWebUI integration with small scrapes first
+#
+# ============================================================================
+
+# ============================================================================
+# ADDITIONAL RESOURCES
+# ============================================================================
+#
+# Project Documentation:
+#   - README.md: Overview and quick start
+#   - docs/CONTRIBUTING.md: Development guide
+#
+# Example Configurations:
+#   - simple_test.yml.example: Minimal working example
+#   - mediawiki.yml.example: Optimized for MediaWiki sites
+#
+# Cleaning Profiles:
+#   - data/config/profiles/README.md: Profile documentation
+#   - Add custom profiles in: data/config/profiles/your_profile.py
+#
+# Command Reference:
+#   webowui --help                    # All commands
+#   webowui scrape --help             # Scraping options
+#   webowui upload --help             # Upload options
+#   webowui validate --help           # Validation
+#
+# GitHub Repository:
+#   https://github.com/jhomen368/web-to-openwebui
+#
+# Issues & Support:
+#   https://github.com/jhomen368/web-to-openwebui/issues
+#
+# ============================================================================

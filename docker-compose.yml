@@ -1,0 +1,53 @@
+# Production Docker Compose Configuration for web-to-openwebui
+# 
+# Quick Start:
+# 1. Create .env file with OPENWEBUI_BASE_URL and OPENWEBUI_API_KEY
+# 2. Configure sites in ./config/sites/
+# 3. Run: docker compose up -d
+services:
+  webowui:
+    image: ghcr.io/jhomen368/web-to-openwebui:latest
+    container_name: webowui
+    
+    environment:
+      # Required: OpenWebUI API credentials
+      - OPENWEBUI_BASE_URL=${OPENWEBUI_BASE_URL}
+      - OPENWEBUI_API_KEY=${OPENWEBUI_API_KEY}
+      
+      # Optional: Configuration
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TZ=${TZ:-America/Los_Angeles}
+    
+    volumes:
+      # Single mount point for all persistent data
+      # data/config/  - Site configurations
+      # data/outputs/ - Scraped content and metadata
+      # data/logs/    - Application logs
+      - ./data:/app/data
+    
+    restart: unless-stopped
+    
+    # Optional: Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Health check (inherited from image)
+    healthcheck:
+      test: ["CMD", "health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    # Log rotation
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

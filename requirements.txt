@@ -1,0 +1,22 @@
+# Core dependencies
+crawl4ai>=0.7.0
+aiohttp>=3.9.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# CLI and UI
+rich>=13.0.0
+click>=8.1.0
+
+# Utilities
+python-slugify>=8.0.0
+markdownify>=0.11.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+
+# Optional: For advanced features
+apscheduler>=3.10.0  # For embedded scheduling
+sqlalchemy>=2.0.0    # Required by APScheduler for job persistence
