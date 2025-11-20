@@ -110,6 +110,7 @@ jobs:
       contents: read
       packages: write
       security-events: write
+      actions: read # Required for fetching workflow run details
 
     steps:
       - name: Checkout code
