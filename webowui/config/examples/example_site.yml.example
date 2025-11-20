@@ -173,6 +173,7 @@ cleaning:
   #   - "none": No cleaning (raw markdown from crawl4ai)
   #   - "mediawiki": Remove MediaWiki boilerplate
   #   - "fandomwiki": Remove Fandom-specific elements (extends MediaWiki)
+  #   - "maxroll": Remove Maxroll.gg navigation and footer
   #   - "custom_profile": Your own profile in data/config/profiles/
   profile: "none"
 

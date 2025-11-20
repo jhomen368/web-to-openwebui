@@ -43,16 +43,9 @@ class MockOpenWebUIClient:
         self.kb_id_counter = 0
 
     async def test_connection(self) -> bool:
-        """
-        Test connection to OpenWebUI.
-
-        Returns:
-            bool: Always True unless simulate_failures is True
-        """
+        """Test connection to OpenWebUI."""
         self._record_call("test_connection")
-        if self.simulate_failures:
-            return False
-        return True
+        return not self.simulate_failures
 
     async def create_knowledge(
         self,

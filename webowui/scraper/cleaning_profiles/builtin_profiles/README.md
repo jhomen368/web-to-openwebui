@@ -123,6 +123,19 @@ cleaning:
     filter_dead_links: false                 # Keep dead links
 ```
 
+### `maxroll`
+- **Description**: Cleaning for Maxroll.gg sites
+- **Removes**: Global navigation sidebar, top navigation bar, footer, social media links
+- **Use Case**: Maxroll.gg game guides and wikis
+- **Configuration**:
+  ```yaml
+  cleaning:
+    profile: "maxroll"
+    config:
+      remove_nav: true             # Remove global navigation and sidebar
+      remove_footer: true          # Remove footer content
+  ```
+
 **Before/After Example:**
 
 *Before (escape-from-tarkov-wiki.md):*
