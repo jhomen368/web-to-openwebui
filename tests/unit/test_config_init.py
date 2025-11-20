@@ -10,6 +10,7 @@ from webowui.config import ensure_example_configs
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 @pytest.mark.unit
 def test_ensure_example_configs_real_files():
     """
@@ -36,7 +37,7 @@ def test_ensure_example_configs_real_files():
             "example_site.yml.example",
             "mediawiki.yml.example",
             "simple_test.yml.example",
-            "README.md"
+            "README.md",
         ]
 
         for expected in expected_files:
@@ -45,6 +46,7 @@ def test_ensure_example_configs_real_files():
         # Verify content is not empty
         for filename in final_filenames:
             assert (sites_dir / filename).stat().st_size > 0
+
 
 @pytest.mark.unit
 def test_ensure_example_configs_preserves_existing():

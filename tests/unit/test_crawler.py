@@ -20,14 +20,11 @@ from webowui.scraper.crawler import CrawlResult, WikiCrawler
 # Initialization Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 def test_crawl_result_success():
     """Test successful CrawlResult."""
-    result = CrawlResult(
-        url="https://test.com/page",
-        markdown="# Content",
-        success=True
-    )
+    result = CrawlResult(url="https://test.com/page", markdown="# Content", success=True)
 
     assert result.success is True
     assert result.url == "https://test.com/page"
@@ -38,10 +35,7 @@ def test_crawl_result_success():
 def test_crawl_result_failure():
     """Test failed CrawlResult."""
     result = CrawlResult(
-        url="https://test.com/page",
-        markdown="",
-        success=False,
-        error="Connection failed"
+        url="https://test.com/page", markdown="", success=False, error="Connection failed"
     )
 
     assert result.success is False
@@ -51,11 +45,7 @@ def test_crawl_result_failure():
 @pytest.mark.unit
 def test_crawl_result_with_metadata():
     """Test CrawlResult includes metadata."""
-    result = CrawlResult(
-        url="https://test.com/page",
-        markdown="# Content",
-        success=True
-    )
+    result = CrawlResult(url="https://test.com/page", markdown="# Content", success=True)
 
     assert result.url is not None
     assert result.timestamp is not None
@@ -64,11 +54,7 @@ def test_crawl_result_with_metadata():
 @pytest.mark.unit
 def test_crawl_result_default_values():
     """Test CrawlResult handles default values."""
-    result = CrawlResult(
-        url="https://test.com/page",
-        markdown="Content",
-        success=True
-    )
+    result = CrawlResult(url="https://test.com/page", markdown="Content", success=True)
 
     assert result.error is None
     assert result.url is not None
@@ -77,6 +63,7 @@ def test_crawl_result_default_values():
 # ============================================================================
 # WikiCrawler Tests (Mocked Initialization)
 # ============================================================================
+
 
 @pytest.mark.unit
 def test_crawler_config_structure():
@@ -91,7 +78,7 @@ def test_crawler_config_structure():
             "max_depth": 2,
             "requests_per_second": 2,
             "delay_between_requests": 0.5,
-        }
+        },
     }
 
     assert config["name"] == "test_wiki"
@@ -110,7 +97,7 @@ def test_crawler_config_with_patterns():
             "follow_patterns": ["^https://test\\.com/wiki/.*"],
             "exclude_patterns": [".*Special:.*"],
             "max_depth": 2,
-        }
+        },
     }
 
     assert "follow_patterns" in config["crawling"]
@@ -127,7 +114,7 @@ def test_crawler_config_rate_limiting():
         "crawling": {
             "requests_per_second": 5,
             "delay_between_requests": 0.2,
-        }
+        },
     }
 
     assert config["crawling"]["requests_per_second"] == 5
@@ -159,9 +146,9 @@ async def test_crawler_crawl_success(mock_site_config_obj):
     crawler = WikiCrawler(mock_site_config_obj)
 
     # Mock crawl4ai
-    with patch("webowui.scraper.crawler.AsyncWebCrawler") as MockAsyncWebCrawler:
+    with patch("webowui.scraper.crawler.AsyncWebCrawler") as mock_crawler_cls:
         mock_crawler_instance = AsyncMock()
-        MockAsyncWebCrawler.return_value.__aenter__.return_value = mock_crawler_instance
+        mock_crawler_cls.return_value.__aenter__.return_value = mock_crawler_instance
 
         # Mock crawl result
         mock_result = MagicMock()
@@ -186,9 +173,9 @@ async def test_crawler_crawl_failure(mock_site_config_obj):
     mock_site_config_obj.start_urls = ["https://test.com/fail"]
     crawler = WikiCrawler(mock_site_config_obj)
 
-    with patch("webowui.scraper.crawler.AsyncWebCrawler") as MockAsyncWebCrawler:
+    with patch("webowui.scraper.crawler.AsyncWebCrawler") as mock_crawler_cls:
         mock_crawler_instance = AsyncMock()
-        MockAsyncWebCrawler.return_value.__aenter__.return_value = mock_crawler_instance
+        mock_crawler_cls.return_value.__aenter__.return_value = mock_crawler_instance
 
         mock_result = MagicMock()
         mock_result.success = False
@@ -217,12 +204,12 @@ async def test_crawler_crawl_depth_limit(mock_site_config_obj):
 
     crawler = WikiCrawler(mock_site_config_obj)
 
-    with patch("webowui.scraper.crawler.AsyncWebCrawler") as MockAsyncWebCrawler:
+    with patch("webowui.scraper.crawler.AsyncWebCrawler") as mock_crawler_cls:
         mock_crawler_instance = AsyncMock()
-        MockAsyncWebCrawler.return_value.__aenter__.return_value = mock_crawler_instance
+        mock_crawler_cls.return_value.__aenter__.return_value = mock_crawler_instance
 
         # Setup side effects for arun to simulate crawling
-        async def side_effect(url, config):
+        async def side_effect(url, _config=None, **kwargs):
             mock_result = MagicMock()
             mock_result.success = True
             # Make content long enough
@@ -230,10 +217,16 @@ async def test_crawler_crawl_depth_limit(mock_site_config_obj):
 
             if url == "https://test.com/start":
                 # Start page links to page1
-                mock_result.links = {"internal": [{"href": "https://test.com/page1"}], "external": []}
+                mock_result.links = {
+                    "internal": [{"href": "https://test.com/page1"}],
+                    "external": [],
+                }
             elif url == "https://test.com/page1":
                 # Page 1 links to page 2 (should be skipped due to depth)
-                mock_result.links = {"internal": [{"href": "https://test.com/page2"}], "external": []}
+                mock_result.links = {
+                    "internal": [{"href": "https://test.com/page2"}],
+                    "external": [],
+                }
             else:
                 mock_result.links = {}
             return mock_result
@@ -261,17 +254,23 @@ async def test_crawler_skips_visited(mock_site_config_obj):
     mock_site_config_obj.follow_patterns = ["^https://test\\.com/.*"]
     crawler = WikiCrawler(mock_site_config_obj)
 
-    with patch("webowui.scraper.crawler.AsyncWebCrawler") as MockAsyncWebCrawler:
+    with patch("webowui.scraper.crawler.AsyncWebCrawler") as mock_crawler_cls:
         mock_crawler_instance = AsyncMock()
-        MockAsyncWebCrawler.return_value.__aenter__.return_value = mock_crawler_instance
+        mock_crawler_cls.return_value.__aenter__.return_value = mock_crawler_instance
 
-        async def side_effect(url, config):
+        async def side_effect(url, _config=None, **kwargs):
             mock_result = MagicMock()
             mock_result.success = True
             # Make content long enough
             mock_result.markdown.raw_markdown = "# Content\n" + "x" * 100
             # Both pages link to each other
-            mock_result.links = {"internal": [{"href": "https://test.com/start"}, {"href": "https://test.com/other"}], "external": []}
+            mock_result.links = {
+                "internal": [
+                    {"href": "https://test.com/start"},
+                    {"href": "https://test.com/other"},
+                ],
+                "external": [],
+            }
             return mock_result
 
         mock_crawler_instance.arun.side_effect = side_effect
@@ -289,7 +288,7 @@ async def test_crawl_page_content_too_short(mock_site_config_obj):
     mock_site_config_obj.min_content_length = 100
     crawler = WikiCrawler(mock_site_config_obj)
 
-    with patch("webowui.scraper.crawler.AsyncWebCrawler") as MockAsyncWebCrawler:
+    with patch("webowui.scraper.crawler.AsyncWebCrawler") as _mock_crawler_cls:
         mock_crawler_instance = AsyncMock()
 
         mock_result = MagicMock()
@@ -312,7 +311,7 @@ async def test_crawl_page_content_truncated(mock_site_config_obj):
     mock_site_config_obj.min_content_length = 5
     crawler = WikiCrawler(mock_site_config_obj)
 
-    with patch("webowui.scraper.crawler.AsyncWebCrawler") as MockAsyncWebCrawler:
+    with patch("webowui.scraper.crawler.AsyncWebCrawler") as _mock_crawler_cls:
         mock_crawler_instance = AsyncMock()
 
         mock_result = MagicMock()
@@ -333,7 +332,7 @@ async def test_crawl_page_exception_handling(mock_site_config_obj):
     """Test exception handling during page crawl."""
     crawler = WikiCrawler(mock_site_config_obj)
 
-    with patch("webowui.scraper.crawler.AsyncWebCrawler") as MockAsyncWebCrawler:
+    with patch("webowui.scraper.crawler.AsyncWebCrawler") as _mock_crawler_cls:
         mock_crawler_instance = AsyncMock()
         mock_crawler_instance.arun.side_effect = Exception("Unexpected crash")
 
@@ -352,9 +351,9 @@ def test_extract_links_helper(mock_site_config_obj):
         "internal": [
             {"href": "https://test.com/1"},
             "https://test.com/2",  # String format
-            {"href": ""}  # Empty
+            {"href": ""},  # Empty
         ],
-        "external": []
+        "external": [],
     }
 
     extracted = crawler._extract_links(links_dict)
@@ -398,6 +397,7 @@ def test_get_stats(mock_site_config_obj):
 # ============================================================================
 # URL Handling Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 def test_url_is_absolute():
@@ -460,6 +460,7 @@ def test_url_normalization_trailing_slash():
 # Link Extraction Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 def test_extract_links_markdown_format():
     """Test extracting links from markdown."""
@@ -471,7 +472,8 @@ def test_extract_links_markdown_format():
 """
 
     import re
-    links = re.findall(r'\[.*?\]\((https?://[^\)]+)\)', markdown)
+
+    links = re.findall(r"\[.*?\]\((https?://[^\)]+)\)", markdown)
 
     assert len(links) == 2
 
@@ -482,7 +484,8 @@ def test_extract_links_relative_urls():
     markdown = "[Link](/wiki/Page1)"
 
     import re
-    links = re.findall(r'\[.*?\]\(([^\)]+)\)', markdown)
+
+    links = re.findall(r"\[.*?\]\(([^\)]+)\)", markdown)
 
     assert len(links) == 1
 
@@ -500,14 +503,13 @@ def test_extract_links_with_query_params():
 # Crawling Operation Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_crawl_result_contains_metadata():
     """Test that crawl result contains proper metadata."""
     result = CrawlResult(
-        url="https://test.com/page",
-        markdown="# Test\n\nContent here",
-        success=True
+        url="https://test.com/page", markdown="# Test\n\nContent here", success=True
     )
 
     assert result.url == "https://test.com/page"
@@ -543,14 +545,12 @@ def test_crawl_config_content_size():
 # Error Handling Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 def test_crawl_result_404_error():
     """Test CrawlResult for 404 errors."""
     result = CrawlResult(
-        url="https://test.com/nonexistent",
-        markdown="",
-        success=False,
-        error="404 Not Found"
+        url="https://test.com/nonexistent", markdown="", success=False, error="404 Not Found"
     )
 
     assert result.success is False
@@ -561,10 +561,7 @@ def test_crawl_result_404_error():
 def test_crawl_result_timeout_error():
     """Test CrawlResult for timeout errors."""
     result = CrawlResult(
-        url="https://test.com/slow",
-        markdown="",
-        success=False,
-        error="Request timeout"
+        url="https://test.com/slow", markdown="", success=False, error="Request timeout"
     )
 
     assert result.success is False
@@ -578,7 +575,7 @@ def test_crawl_result_network_error():
         url="https://nonexistent.invalid",
         markdown="",
         success=False,
-        error="Network error: Connection refused"
+        error="Network error: Connection refused",
     )
 
     assert result.success is False
@@ -589,10 +586,7 @@ def test_crawl_result_network_error():
 def test_crawl_result_parse_error():
     """Test CrawlResult for parsing errors."""
     result = CrawlResult(
-        url="https://test.com/bad",
-        markdown="",
-        success=False,
-        error="Failed to parse HTML"
+        url="https://test.com/bad", markdown="", success=False, error="Failed to parse HTML"
     )
 
     assert result.success is False
@@ -615,6 +609,7 @@ def test_multiple_start_urls():
 # ============================================================================
 # Rate Limiting Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 def test_rate_limit_requests_per_second():
@@ -647,6 +642,7 @@ def test_rate_limit_delay_between_requests():
 # ============================================================================
 # Content Filtering Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 def test_content_meets_minimum_size():

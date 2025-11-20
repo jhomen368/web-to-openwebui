@@ -1,4 +1,5 @@
 """Test fixture data and samples."""
+
 from tests.fixtures.sample_configs import (
     ALL_SITE_CONFIGS,
     get_site_config,

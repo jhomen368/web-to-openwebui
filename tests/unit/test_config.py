@@ -5,6 +5,7 @@ Tests for:
 - SiteConfig: Per-site configuration loading and validation
 - AppConfig: Application-wide settings and site discovery
 """
+
 import os
 from pathlib import Path
 from typing import Any
@@ -22,11 +23,14 @@ from webowui.config import AppConfig, SiteConfig, ensure_example_configs
 # SiteConfig Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 class TestSiteConfigBasics:
     """Test basic SiteConfig creation and attribute access."""
 
-    def test_site_config_basic_creation(self, tmp_config_dir: Path, sample_site_config: dict[str, Any]):
+    def test_site_config_basic_creation(
+        self, tmp_config_dir: Path, sample_site_config: dict[str, Any]
+    ):
         """Test basic SiteConfig creation from dict."""
         config_file = tmp_config_dir / "sites" / "test.yaml"
         config_file.write_text(yaml.dump(sample_site_config))
@@ -240,7 +244,9 @@ class TestSiteConfigBasics:
 class TestSiteConfigValidation:
     """Test SiteConfig validation."""
 
-    def test_site_config_validation_success(self, tmp_config_dir: Path, sample_site_config: dict[str, Any]):
+    def test_site_config_validation_success(
+        self, tmp_config_dir: Path, sample_site_config: dict[str, Any]
+    ):
         """Test successful validation."""
         config_file = tmp_config_dir / "sites" / "test.yaml"
         config = SiteConfig(sample_site_config, config_file)
@@ -316,13 +322,14 @@ class TestSiteConfigValidation:
 # AppConfig Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 class TestAppConfigBasics:
     """Test basic AppConfig initialization and directory structure."""
 
     def test_app_config_initialization(self, tmp_data_dir: Path):
         """Test AppConfig initializes with correct paths."""
-        with patch.object(AppConfig, '__init__', lambda self: None):
+        with patch.object(AppConfig, "__init__", lambda self: None):
             config = AppConfig()
             config.base_dir = tmp_data_dir.parent
             config.data_dir = tmp_data_dir
@@ -337,22 +344,26 @@ class TestAppConfigBasics:
     def test_app_config_directory_creation(self, tmp_data_dir: Path):
         """Test AppConfig creates required directories."""
         # Reset AppConfig to use tmp_data_dir
-        with patch('webowui.config.Path.__init__', return_value=None),\
-             patch.object(AppConfig, '__init__', autospec=True) as mock_init:
-                def init_with_tmp(self, data_dir=None):
-                    self.base_dir = tmp_data_dir.parent
-                    self.data_dir = tmp_data_dir
-                    self.config_dir = tmp_data_dir / "config"
-                    self.sites_dir = tmp_data_dir / "config" / "sites"
-                    self.outputs_dir = tmp_data_dir / "outputs"
-                    self.logs_dir = tmp_data_dir / "logs"
-                    self.data_dir.mkdir(exist_ok=True)
-                    self.config_dir.mkdir(exist_ok=True)
-                    self.sites_dir.mkdir(exist_ok=True)
-                    self.outputs_dir.mkdir(exist_ok=True)
-                    self.logs_dir.mkdir(exist_ok=True)
-                mock_init.side_effect = init_with_tmp
-                AppConfig()
+        with (
+            patch("webowui.config.Path.__init__", return_value=None),
+            patch.object(AppConfig, "__init__", autospec=True) as mock_init,
+        ):
+
+            def init_with_tmp(self, data_dir=None):
+                self.base_dir = tmp_data_dir.parent
+                self.data_dir = tmp_data_dir
+                self.config_dir = tmp_data_dir / "config"
+                self.sites_dir = tmp_data_dir / "config" / "sites"
+                self.outputs_dir = tmp_data_dir / "outputs"
+                self.logs_dir = tmp_data_dir / "logs"
+                self.data_dir.mkdir(exist_ok=True)
+                self.config_dir.mkdir(exist_ok=True)
+                self.sites_dir.mkdir(exist_ok=True)
+                self.outputs_dir.mkdir(exist_ok=True)
+                self.logs_dir.mkdir(exist_ok=True)
+
+            mock_init.side_effect = init_with_tmp
+            AppConfig()
 
         assert (tmp_data_dir / "config").exists()
         assert (tmp_data_dir / "outputs").exists()
@@ -360,20 +371,24 @@ class TestAppConfigBasics:
 
     def test_app_config_environment_variables(self, tmp_data_dir: Path, mock_env):
         """Test AppConfig loads environment variables."""
-        with patch('webowui.config.Path.__init__', return_value=None),\
-             patch.object(AppConfig, '__init__', autospec=True) as mock_init:
-                def init_with_env(self):
-                    self.base_dir = tmp_data_dir.parent
-                    self.data_dir = tmp_data_dir
-                    self.config_dir = tmp_data_dir / "config"
-                    self.sites_dir = tmp_data_dir / "config" / "sites"
-                    self.outputs_dir = tmp_data_dir / "outputs"
-                    self.logs_dir = tmp_data_dir / "logs"
-                    self.openwebui_base_url = os.getenv("OPENWEBUI_BASE_URL", "")
-                    self.openwebui_api_key = os.getenv("OPENWEBUI_API_KEY", "")
-                    self.log_level = os.getenv("LOG_LEVEL", "INFO")
-                mock_init.side_effect = init_with_env
-                config = AppConfig()
+        with (
+            patch("webowui.config.Path.__init__", return_value=None),
+            patch.object(AppConfig, "__init__", autospec=True) as mock_init,
+        ):
+
+            def init_with_env(self):
+                self.base_dir = tmp_data_dir.parent
+                self.data_dir = tmp_data_dir
+                self.config_dir = tmp_data_dir / "config"
+                self.sites_dir = tmp_data_dir / "config" / "sites"
+                self.outputs_dir = tmp_data_dir / "outputs"
+                self.logs_dir = tmp_data_dir / "logs"
+                self.openwebui_base_url = os.getenv("OPENWEBUI_BASE_URL", "")
+                self.openwebui_api_key = os.getenv("OPENWEBUI_API_KEY", "")
+                self.log_level = os.getenv("LOG_LEVEL", "INFO")
+
+            mock_init.side_effect = init_with_env
+            config = AppConfig()
 
         assert config.openwebui_base_url == "http://localhost:8000"
         assert config.openwebui_api_key == "test-key-123"
@@ -386,7 +401,7 @@ class TestAppConfigSiteManagement:
 
     def test_list_sites_empty(self, tmp_data_dir: Path):
         """Test listing sites when none exist."""
-        with patch.object(AppConfig, '__init__', lambda self: None):
+        with patch.object(AppConfig, "__init__", lambda self: None):
             config = AppConfig()
             config.sites_dir = tmp_data_dir / "config" / "sites"
             config.sites_dir.mkdir(parents=True, exist_ok=True)
@@ -403,12 +418,16 @@ class TestAppConfigSiteManagement:
         # Create test site configs
         for site_name in ["wiki1", "wiki2", "wiki3"]:
             config_file = sites_dir / f"{site_name}.yaml"
-            config_file.write_text(yaml.dump({
-                "name": site_name,
-                "base_url": f"https://{site_name}.example.com",
-            }))
+            config_file.write_text(
+                yaml.dump(
+                    {
+                        "name": site_name,
+                        "base_url": f"https://{site_name}.example.com",
+                    }
+                )
+            )
 
-        with patch.object(AppConfig, '__init__', lambda self: None):
+        with patch.object(AppConfig, "__init__", lambda self: None):
             config = AppConfig()
             config.sites_dir = sites_dir
 
@@ -416,15 +435,13 @@ class TestAppConfigSiteManagement:
 
         assert sorted(sites) == ["wiki1", "wiki2", "wiki3"]
 
-    def test_load_site_config_success(self, tmp_config_dir: Path, sample_site_config: dict[str, Any]):
+    def test_load_site_config_success(
+        self, tmp_config_dir: Path, sample_site_config: dict[str, Any]
+    ):
         """Test successfully loading a site config."""
-        create_temp_site_config(
-            tmp_config_dir / "sites",
-            "test_wiki",
-            sample_site_config
-        )
+        create_temp_site_config(tmp_config_dir / "sites", "test_wiki", sample_site_config)
 
-        with patch.object(AppConfig, '__init__', lambda self: None):
+        with patch.object(AppConfig, "__init__", lambda self: None):
             config = AppConfig()
             config.sites_dir = tmp_config_dir / "sites"
 
@@ -437,7 +454,7 @@ class TestAppConfigSiteManagement:
         sites_dir = tmp_config_dir / "sites"
         sites_dir.mkdir(parents=True, exist_ok=True)
 
-        with patch.object(AppConfig, '__init__', lambda self: None):
+        with patch.object(AppConfig, "__init__", lambda self: None):
             config = AppConfig()
             config.sites_dir = sites_dir
 
@@ -451,7 +468,7 @@ class TestAppConfigValidation:
 
     def test_validate_openwebui_config_success(self, tmp_data_dir: Path, mock_env):
         """Test successful OpenWebUI config validation."""
-        with patch.object(AppConfig, '__init__', lambda self: None):
+        with patch.object(AppConfig, "__init__", lambda self: None):
             config = AppConfig()
             config.openwebui_base_url = "http://localhost:8000"
             config.openwebui_api_key = "test-key"
@@ -462,7 +479,7 @@ class TestAppConfigValidation:
 
     def test_validate_openwebui_config_missing_url(self, tmp_data_dir: Path):
         """Test validation fails when base URL missing."""
-        with patch.object(AppConfig, '__init__', lambda self: None):
+        with patch.object(AppConfig, "__init__", lambda self: None):
             config = AppConfig()
             config.openwebui_base_url = ""
             config.openwebui_api_key = "test-key"
@@ -473,7 +490,7 @@ class TestAppConfigValidation:
 
     def test_validate_openwebui_config_missing_key(self, tmp_data_dir: Path):
         """Test validation fails when API key missing."""
-        with patch.object(AppConfig, '__init__', lambda self: None):
+        with patch.object(AppConfig, "__init__", lambda self: None):
             config = AppConfig()
             config.openwebui_base_url = "http://localhost:8000"
             config.openwebui_api_key = ""
@@ -499,7 +516,7 @@ class TestEnsureExampleConfigs:
         example_file = examples_dir / "test.yml.example"
         example_file.write_text("# Test example config")
 
-        with patch('webowui.config.Path'):
+        with patch("webowui.config.Path"):
             # This is complex to mock properly, so we'll skip the detailed mock
             pass
 

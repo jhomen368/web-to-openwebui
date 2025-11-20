@@ -4,6 +4,7 @@ Test configuration data fixtures.
 Provides predefined sample configurations for different site types
 and scenarios to use in unit and integration tests.
 """
+
 from typing import Any
 
 # ============================================================================
@@ -221,13 +222,13 @@ ALL_SITE_CONFIGS = {
 def get_site_config(self, config_type: str) -> dict[str, Any]:
     """
     Get a predefined site configuration.
-    
+
     Args:
         config_type: Type of config (simple, mediawiki, fandom, etc.)
-    
+
     Returns:
         Dict: Configuration dictionary
-    
+
     Raises:
         KeyError: If config_type not found
     """
@@ -239,6 +240,7 @@ def get_site_config(self, config_type: str) -> dict[str, Any]:
 
     # Return copy to prevent test pollution
     import copy
+
     return copy.deepcopy(ALL_SITE_CONFIGS[config_type])
 
 
@@ -249,11 +251,11 @@ def get_site_config_with_override(
 ) -> dict[str, Any]:
     """
     Get a predefined site configuration with overrides.
-    
+
     Args:
         config_type: Type of config (simple, mediawiki, fandom, etc.)
         overrides: Dictionary of values to override
-    
+
     Returns:
         Dict: Configuration dictionary with overrides applied
     """

@@ -23,16 +23,16 @@ site:
   # Rules: lowercase, no spaces, alphanumeric and hyphens only
   # Example: "my-wiki", "company-docs", "game-guide"
   name: "example_site"
-  
+
   # REQUIRED: Human-readable name displayed in logs and reports
   # Can contain spaces, capitals, any characters
   display_name: "Example Site"
-  
+
   # REQUIRED: Root URL of the website
   # All scraped URLs must start with this base URL
   # Must include protocol (http:// or https://)
   base_url: "https://example.com"
-  
+
   # REQUIRED: Starting URLs where scraping begins
   # List of full URLs (not relative paths)
   # The scraper starts here and follows links according to strategy
@@ -51,7 +51,7 @@ strategy:
   #   - "selective": Only scrape explicit URLs, don't follow links
   #   - "depth_limited": Strict depth enforcement with link following
   type: "recursive"
-  
+
   # REQUIRED: Maximum link depth from start URLs
   # depth=0: Only scrape start_urls (no link following)
   # depth=1: Scrape start_urls + all direct links from them
@@ -60,7 +60,7 @@ strategy:
   #
   # RECOMMENDATION: Start with depth=1 for testing, increase gradually
   max_depth: 2
-  
+
   # REQUIRED: Patterns for URLs to follow
   # List of regular expressions (Python regex syntax)
   # Only URLs matching these patterns will be scraped
@@ -68,7 +68,7 @@ strategy:
   follow_patterns:
     - "^https://example\\.com/wiki/.*"
     - "^https://example\\.com/docs/.*"
-  
+
   # REQUIRED: Patterns for URLs to exclude
   # List of regular expressions
   # URLs matching these will NOT be scraped, even if they match follow_patterns
@@ -79,7 +79,7 @@ strategy:
     - ".*\\?action=edit.*"                        # Edit pages
     - ".*\\?action=history.*"                     # History pages
     - ".*#.*"                                     # Fragment identifiers
-    
+
     # MediaWiki-specific (if applicable):
     - ".*Special:.*"                              # Special pages
     - ".*User:.*"                                 # User pages
@@ -101,12 +101,12 @@ rate_limit:
   # Be respectful! Public sites should use 1-2 req/sec
   # Self-hosted or approved aggressive scraping: 5-10 req/sec
   requests_per_second: 2
-  
+
   # REQUIRED: Minimum delay between requests (seconds)
   # Additional throttling on top of requests_per_second
   # 0.5 seconds = 500ms between requests
   delay: 0.5
-  
+
   # OPTIONAL: Maximum concurrent requests
   # Default: 1 (sequential scraping)
   # Higher values = faster but more server load
@@ -126,7 +126,7 @@ extraction:
   #   - ".main-content" (element with class="main-content")
   #   - "#mw-content-text" (MediaWiki content area)
   content_selector: "body"
-  
+
   # OPTIONAL: CSS selectors to remove before extraction
   # List of selectors for elements to delete
   # Useful for removing navigation, ads, sidebars
@@ -150,13 +150,13 @@ filters:
   # Default: 100
   # Helps filter out navigation pages, redirects, stubs
   min_content_length: 100
-  
+
   # OPTIONAL: Maximum content length (characters)
   # Pages longer than this are rejected
   # Default: 500000 (500KB of text)
   # Safety limit to catch potential issues
   max_content_length: 500000
-  
+
   # OPTIONAL: Filter dead links
   # Remove links to non-existent pages (404s, red links)
   # Default: false
@@ -175,7 +175,7 @@ cleaning:
   #   - "fandomwiki": Remove Fandom-specific elements (extends MediaWiki)
   #   - "custom_profile": Your own profile in data/config/profiles/
   profile: "none"
-  
+
   # OPTIONAL: Profile-specific configuration
   # Each profile has different options (see profile documentation)
   config:
@@ -199,23 +199,23 @@ openwebui:
   # OPTIONAL: Knowledge base name in OpenWebUI
   # This is the display name users will see
   knowledge_name: "Example Site Knowledge"
-  
+
   # OPTIONAL: Knowledge base ID (if using existing knowledge base)
   # Leave blank to create new knowledge base
   # Get this from OpenWebUI admin panel or API
   # knowledge_id: "kb-123456"
-  
+
   # OPTIONAL: Automatically upload after each scrape
   # Default: false (manual upload via `webowui upload` command)
   auto_upload: false
-  
+
   # OPTIONAL: Preserve deleted files in OpenWebUI
   # When a page is removed from the scrape:
   #   - false: Remove from knowledge AND delete file (clean, default)
   #   - true: Remove from knowledge but keep file in storage
   # Default: false
   preserve_deleted_files: false
-  
+
   # OPTIONAL: Description for knowledge base
   # Shown in OpenWebUI knowledge list
   # description: "Comprehensive documentation scraped from Example.com"
@@ -228,13 +228,13 @@ retention:
   # OPTIONAL: Enable automatic retention cleanup
   # Default: false (keep all backups forever)
   enabled: false
-  
+
   # OPTIONAL: Number of timestamped backups to keep
   # Default: 2 (keeps last 2 backup directories)
   # Note: current/ directory is ALWAYS kept (it's the active state)
   # Example: keep_backups=2 keeps current/ plus 2 most recent timestamps
   keep_backups: 2
-  
+
   # OPTIONAL: Run cleanup automatically after each scrape
   # Default: true (when retention is enabled)
   # Set to false to only run cleanup manually via `webowui cleanup`
@@ -249,13 +249,13 @@ schedule:
   # Default: false (manual scraping only)
   # Requires Docker container running in daemon mode
   enabled: false
-  
+
   # OPTIONAL: Schedule type
   # Options:
   #   - "cron": Unix cron syntax (most flexible)
   #   - "interval": Fixed time intervals
   type: "cron"
-  
+
   # OPTIONAL: Cron schedule (when type="cron")
   # Syntax: "minute hour day_of_month month day_of_week"
   # Examples:
@@ -264,22 +264,22 @@ schedule:
   #   - "0 0 * * 0"    = Every Sunday at midnight
   #   - "30 3 * * 1"   = Every Monday at 3:30 AM
   cron: "0 2 * * *"
-  
+
   # OPTIONAL: Interval schedule (when type="interval")
   # interval:
   #   hours: 6          # Run every 6 hours
   #   minutes: 0        # (additional minutes, optional)
-  
+
   # OPTIONAL: Timezone for schedule
   # Default: UTC
   # Use IANA timezone names: "America/Los_Angeles", "Europe/London", etc.
   timezone: "America/Los_Angeles"
-  
+
   # OPTIONAL: Timeout for scrape operations (minutes)
   # Default: 60 minutes
   # If scrape takes longer than this, it's terminated
   timeout_minutes: 60
-  
+
   # OPTIONAL: Retry configuration for failed scrapes
   retry:
     enabled: true              # Enable retry on failure

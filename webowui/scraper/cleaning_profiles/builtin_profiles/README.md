@@ -111,7 +111,7 @@ cleaning:
     remove_community_content: true           # Remove Discord widgets
     remove_related_wikis: true               # Remove cross-wiki suggestions
     remove_fandom_footer: true               # Remove Fandom global footer
-    
+
     # ----- Inherited MediaWiki Options (8) -----
     remove_infoboxes: true                   # Remove metadata tables
     remove_external_links: true              # Remove "External Links" sections
@@ -169,7 +169,7 @@ View Mobile Site
    ```bash
    # Scrape with "none" profile first
    webowui scrape --site mysite
-   
+
    # Change to "fandomwiki" and re-scrape
    webowui scrape --site mysite
    ```
@@ -210,21 +210,21 @@ import re
 
 class MySiteProfile(BaseCleaningProfile):
     """Describe what this profile cleans."""
-    
+
     def clean(self, content: str, metadata: Optional[Dict] = None) -> str:
         """Clean content according to your rules."""
         # Your cleaning logic here
         lines = content.split('\n')
         cleaned_lines = []
-        
+
         for line in lines:
             # Example: Skip lines containing "Advertisement"
             if "Advertisement" in line:
                 continue
             cleaned_lines.append(line)
-        
+
         return '\n'.join(cleaned_lines)
-    
+
     @classmethod
     def get_config_schema(cls) -> Dict[str, Any]:
         """Define your configuration options."""
@@ -263,7 +263,7 @@ Add to your site's YAML file:
 cleaning:
   # Profile name (must match *_profile.py filename without "_profile")
   profile: "mediawiki"
-  
+
   # Profile-specific configuration (optional)
   config:
     filter_dead_links: true
@@ -303,7 +303,7 @@ def clean(self, content: str, metadata: Optional[Dict] = None) -> str:
 ```python
 def clean(self, content: str, metadata: Optional[Dict] = None) -> str:
     url = metadata.get('url', '') if metadata else ''
-    
+
     # Different cleaning for different URL patterns
     if '/guides/' in url:
         # Remove navigation specific to guides
@@ -311,7 +311,7 @@ def clean(self, content: str, metadata: Optional[Dict] = None) -> str:
     elif '/reference/' in url:
         # Keep technical details in reference pages
         pass
-    
+
     return content
 ```
 
@@ -321,14 +321,14 @@ from .mediawiki_profile import MediaWikiProfile
 
 class MyWikiProfile(MediaWikiProfile):
     """Extends MediaWiki with custom cleaning."""
-    
+
     def clean(self, content: str, metadata: Optional[Dict] = None) -> str:
         # First run parent MediaWiki cleaning
         content = super().clean(content, metadata)
-        
+
         # Then add your custom cleaning
         content = self._remove_custom_elements(content)
-        
+
         return content
 ```
 

@@ -57,18 +57,18 @@ services:
   webowui:
     image: ghcr.io/jhomen368/web-to-openwebui:latest
     container_name: web-to-openwebui
-    
+
     environment:
       - OPENWEBUI_BASE_URL=${OPENWEBUI_BASE_URL}
       - OPENWEBUI_API_KEY=${OPENWEBUI_API_KEY}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - TZ=${TZ:-America/Los_Angeles}
-    
+
     volumes:
       - ./data:/app/data
-    
+
     restart: unless-stopped
-    
+
     healthcheck:
       test: ["CMD", "python", "-m", "webowui", "health"]
       interval: 60s
@@ -227,11 +227,11 @@ from webowui.scraper.cleaning_profiles.base import BaseCleaningProfile
 
 class MySiteProfile(BaseCleaningProfile):
     """Cleans content for my specific site."""
-    
+
     def clean(self, content: str, metadata=None):
         # Remove your site-specific boilerplate
         return content
-    
+
     @classmethod
     def get_config_schema(cls):
         return {

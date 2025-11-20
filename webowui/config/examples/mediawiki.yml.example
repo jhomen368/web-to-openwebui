@@ -20,13 +20,13 @@
 site:
   # Internal identifier (lowercase, no spaces, used for directory names)
   name: "mywiki"
-  
+
   # Human-readable name (used in logs and OpenWebUI knowledge base)
   display_name: "My Wiki"
-  
+
   # Base URL of the wiki (without /wiki/ path)
   base_url: "https://example.com"
-  
+
   # Starting pages for the scraper (usually Main Page or index)
   start_urls:
     - "https://example.com/wiki/Main_Page"
@@ -40,15 +40,15 @@ strategy:
   # Type: "recursive" (follow links), "selective" (specific patterns only),
   #       "depth_limited" (strict depth control)
   type: "recursive"
-  
+
   # Maximum depth from start URLs (1 = only pages linked from start page)
   # Increase for comprehensive scraping, decrease for testing
   max_depth: 3
-  
+
   # URL patterns to follow (Python regex)
   follow_patterns:
     - "^https://example\\.com/wiki/.*"
-  
+
   # URL patterns to exclude (Python regex)
   # These are standard MediaWiki pages you usually don't want
   exclude_patterns:
@@ -66,27 +66,27 @@ strategy:
     - ".*oldid=.*"          # Old revisions
     - ".*diff=.*"           # Difference pages
     - ".*printable=.*"      # Print versions
-    
+
     # Wiki administrative/meta pages (about, policies, disclaimers)
     - ".*[Ww]iki:[Aa]bout"                 # About/info pages
     - ".*[Ww]iki:.*[Dd]isclaimer"          # Legal disclaimers
     - ".*[Ww]iki:[Cc]opyrights?"           # Copyright info
     - ".*[Ww]iki:[Pp]rivacy"               # Privacy policies
     - ".*[Ww]iki:[Cc]ommunity"             # Community guidelines
-    
+
     # Edit/action pages and redirects
     - ".*/edit(\\?.*)?$"                   # Edit interface pages
     - ".*&action=(edit|history|delete|protect)"  # Action parameter pages
     - ".*\\?redlink="                      # Redirect/non-existent pages
-    
+
     # Version history and changelog pages (optional - comment out if needed)
     - ".*[Vv]ersion.*[Hh]istory"           # Version history pages
     - ".*[Cc]hangelog"                     # Changelog pages
     - ".*[Pp]atch.*[Nn]otes"               # Patch notes pages
-    
+
     # Image and file description pages
     - ".*Image:.*"          # Image description pages
-  
+
   # Rate limiting (be respectful to the server)
   rate_limit:
     requests_per_second: 1      # 1 request per second (conservative)
@@ -99,14 +99,14 @@ strategy:
 extraction:
   # Main content selector (body gets everything, or use specific selector)
   content_selector: "body"
-  
+
   # Elements to remove before extraction
   remove_selectors:
     - "script"     # JavaScript code
     - "style"      # CSS styles
     - "nav"        # Navigation menus
     - "footer"     # Page footers
-  
+
   # Markdown generation options
   markdown_options:
     include_images: true       # Keep image references
@@ -120,10 +120,10 @@ extraction:
 filters:
   # Minimum content length (filter out navigation pages)
   min_content_length: 100
-  
+
   # Maximum content length (prevent memory issues)
   max_content_length: 500000
-  
+
   # Only scrape HTML pages
   allowed_content_types:
     - "text/html"
@@ -136,36 +136,36 @@ filters:
 cleaning:
   # Profile: "mediawiki" (recommended), "none" (no cleaning), or custom
   profile: "mediawiki"
-  
+
   # Profile-specific configuration
   config:
     # Remove navigation elements (Jump to navigation/search links)
     remove_navigation_boilerplate: true
-    
+
     # Remove wiki meta messages (work in progress banners, help text)
     remove_wiki_meta: true
-    
+
     # Remove table of contents sections (auto-generated navigation)
     remove_table_of_contents: true
-    
+
     # Remove infobox metadata tables (often at top of articles)
     remove_infoboxes: true
-    
+
     # Remove "External Links" and "See also" sections
     remove_external_links: true
-    
+
     # Remove version history and changelog sections
     remove_version_history: true
-    
+
     # Remove template editing links ([v], [t], [e])
     remove_template_links: true
-    
+
     # Remove citation markers and references
     remove_citations: true
-    
+
     # Remove category listings
     remove_categories: true
-    
+
     # Remove links to non-existent pages (reduce noise)
     filter_dead_links: true
 
@@ -175,27 +175,27 @@ cleaning:
 openwebui:
   # Knowledge base name in OpenWebUI
   knowledge_name: "My Wiki"
-  
+
   # Description shown in OpenWebUI
   description: "Comprehensive MediaWiki knowledge base for RAG"
-  
+
   # Optional: Specify existing knowledge base ID to update (leave blank for new)
   # knowledge_id: "existing-kb-id-here"
-  
+
   # Automatically upload after scraping
   auto_upload: false
-  
+
   # Number of files to upload concurrently
   batch_size: 10
-  
+
   # File deletion behavior when files are removed from scrape:
   # false = Delete file from storage (default, recommended)
   # true = Remove from knowledge but keep file in storage
   preserve_deleted_files: false
-  
+
   # Auto-rebuild upload_status.json if missing (disaster recovery)
   auto_rebuild_state: true
-  
+
   # Minimum confidence for state reconstruction: "high", "medium", or "low"
   rebuild_confidence_threshold: "medium"
 
@@ -205,7 +205,7 @@ openwebui:
 retention:
   # Enable automatic backup cleanup
   enabled: true
-  
+
   # Number of timestamped backup directories to keep (not counting current/)
   # Example with keep_backups: 2
   #   outputs/mysite/
@@ -214,7 +214,7 @@ retention:
   #   ├── 2025-11-16_10-00-00/ ← Backup 2
   #   └── 2025-11-15_10-00-00/ ← DELETE (exceeds limit)
   keep_backups: 2
-  
+
   # Run cleanup automatically after each scrape
   auto_cleanup: true
 
@@ -224,28 +224,28 @@ retention:
 schedule:
   # Enable scheduled scraping (useful for Docker deployment)
   enabled: true
-  
+
   # Schedule type: "cron" (cron syntax) or "interval" (fixed intervals)
   type: "cron"
-  
+
   # Cron expression (for type: cron)
   # Examples:
   #   "0 2 * * *"      = 2 AM daily
   #   "0 */6 * * *"    = Every 6 hours
   #   "0 0 * * 0"      = Weekly on Sunday midnight
   cron: "0 2 * * *"
-  
+
   # Interval settings (for type: interval)
   # interval:
   #   hours: 6         = Every 6 hours
   #   minutes: 30      = Every 30 minutes
-  
+
   # Timezone for scheduled runs
   timezone: "America/Los_Angeles"
-  
+
   # Maximum time allowed for scrape before timeout
   timeout_minutes: 60
-  
+
   # Retry settings for failed scrapes
   retry:
     enabled: true           # Retry on failure

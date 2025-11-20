@@ -82,7 +82,9 @@ class TestScraperScheduler:
             scheduler.load_schedules()
 
             mock_register.assert_called_once_with(site1_config)
-            assert len(scheduler.jobs) == 0  # register_job was mocked, so jobs dict not updated here
+            assert (
+                len(scheduler.jobs) == 0
+            )  # register_job was mocked, so jobs dict not updated here
 
     def test_register_job_cron(self, scheduler):
         """Test registering a cron job."""
@@ -118,9 +120,11 @@ class TestScraperScheduler:
 
     def test_start(self, scheduler):
         """Test starting the scheduler."""
-        with patch.object(scheduler, "load_schedules") as mock_load, \
-             patch("asyncio.run") as mock_asyncio_run, \
-             patch.object(scheduler, "_run_scheduler", new_callable=MagicMock):
+        with (
+            patch.object(scheduler, "load_schedules") as mock_load,
+            patch("asyncio.run") as mock_asyncio_run,
+            patch.object(scheduler, "_run_scheduler", new_callable=MagicMock),
+        ):
 
             # Test with jobs
             scheduler.jobs = {"job1": MagicMock()}
@@ -153,6 +157,7 @@ class TestScraperScheduler:
         # Mock asyncio.sleep to raise SystemExit to break the infinite loop
         with patch("asyncio.sleep", side_effect=[None, SystemExit]):
             import contextlib
+
             with contextlib.suppress(SystemExit):
                 await scheduler._run_scheduler()
 

@@ -576,9 +576,10 @@ class OpenWebUIClient:
                 if response.status == 200:
                     result = await response.json()
                     # Extract file list from response
-                    if isinstance(result, dict):
-                        files = result.get("files", result.get("data", []))
-                    else:
+                    files = result.get("files")
+                    if isinstance(files, dict):
+                        files = files.get("data", []) if files else []
+                    elif not isinstance(files, list):
                         files = []
 
                     # If hashes requested, fetch detailed info for each file
@@ -624,9 +625,10 @@ class OpenWebUIClient:
                             logger.debug(
                                 f"Filtered {len(filtered_files)}/{len(files)} files in folder {site_folder}"
                             )
-                        return filtered_files
+                            return filtered_files
+                        return []
 
-                    return files
+                    return cast(list[dict] | None, files)
                 else:
                     logger.warning(f"Failed to get knowledge files: {response.status}")
                     return None
@@ -1091,7 +1093,7 @@ class OpenWebUIClient:
         knowledge_id: str | None = None,
         keep_files: bool = False,
         verify_before_update: bool = True,  # Enable reconciliation by default
-        cleanup_untracked: bool = False,  # CHANGED: Opt-in for safety (default OFF)
+        cleanup_untracked: bool = False,  # NEW: Opt-in for safety (default OFF)
     ) -> dict:
         """
         Perform incremental upload with add/update/delete operations.
@@ -1136,7 +1138,7 @@ class OpenWebUIClient:
             logger.info(f"Created/found knowledge: {knowledge.get('id')}")
 
         assert knowledge is not None
-        knowledge_id = knowledge["id"]
+        knowledge_id = cast(str, knowledge["id"])
         knowledge_name = knowledge["name"]
 
         previous_file_map = previous_file_map or {}
@@ -1216,12 +1218,12 @@ class OpenWebUIClient:
             for result in upload_results:
                 file_id = result.get("file_id")
                 if file_id:
-                    new_file_ids.append(file_id)
+                    new_file_ids.append(cast(str, file_id))
 
                     # Find which new_file this result corresponds to
                     for file_path, file_info in new_files:
                         if file_path.name == result.get("filename"):
-                            new_file_map[file_info["url"]] = file_id
+                            new_file_map[file_info["url"]] = cast(str, file_id)
                             break
 
             uploaded_count = len(new_file_ids)
@@ -1403,7 +1405,7 @@ class OpenWebUIClient:
         Files are uploaded with site folder prefix for multi-site organization.
 
         Args:
-            scrape_dir: Directory containing scraped markdown files
+            scrape_dir: Directory containing scraped Markdown files
             site_name: Site identifier for folder prefix
             knowledge_name: Name of the knowledge base
             description: Description of the knowledge base
@@ -1436,7 +1438,8 @@ class OpenWebUIClient:
             logger.info(f"Created new knowledge: {knowledge.get('id')}")
 
         assert knowledge is not None
-        knowledge_id = knowledge["id"]
+        knowledge_id = cast(str, knowledge["id"])
+        knowledge_name = knowledge["name"]
 
         # Upload files with site folder prefix
         upload_results = await self.upload_files(
@@ -1446,7 +1449,9 @@ class OpenWebUIClient:
         if not upload_results:
             return {"error": "Failed to upload files"}
 
-        file_ids = [r["file_id"] for r in upload_results if "file_id" in r]
+        file_ids = [
+            cast(str, r["file_id"]) for r in upload_results if "file_id" in r and r["file_id"]
+        ]
 
         # Wait for files to be processed
         if file_ids:

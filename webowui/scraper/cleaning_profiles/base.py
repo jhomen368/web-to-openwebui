@@ -76,7 +76,7 @@ class BaseCleaningProfile(ABC):
                     raise ValueError(
                         f"Config '{key}' must be string, got {type(actual_value).__name__}"
                     )
-                elif expected_type == "number" and not isinstance(actual_value, (int, float)):
+                elif expected_type == "number" and not isinstance(actual_value, int | float):
                     raise ValueError(
                         f"Config '{key}' must be number, got {type(actual_value).__name__}"
                     )

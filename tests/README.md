@@ -260,7 +260,7 @@ from tests.mocks.openwebui_mock import MockOpenWebUIClient
 async def test_upload_workflow():
     """Test upload without real OpenWebUI."""
     client = MockOpenWebUIClient()
-    
+
     result = await client.upload_files(files)
     assert result.success
     assert len(result.file_ids) == len(files)
@@ -324,7 +324,7 @@ pytest tests/unit/test_config.py::test_specific -vv --pdb
 
 **Where to check:**
 - Terminal: `coverage.py` output
-- HTML: `htmlcov/index.html` 
+- HTML: `htmlcov/index.html`
 - CI/CD: GitHub Actions workflow results
 - Tracking: Codecov.io integration
 
@@ -394,4 +394,3 @@ python -m pytest tests/unit/ \
 - [Coverage.py Documentation](https://coverage.readthedocs.io/)
 - [Python Testing Best Practices](https://docs.python-guide.org/writing/tests/)
 - [AsyncIO Testing](https://docs.pytest.org/en/stable/asyncio.html)
-

@@ -6,6 +6,7 @@ Tests the different crawl strategy implementations:
 - SelectiveStrategy: Only crawl explicit patterns
 - DepthLimitedStrategy: Strict depth enforcement from start URLs
 """
+
 from unittest.mock import Mock
 
 import pytest
@@ -21,6 +22,7 @@ from webowui.scraper.strategies import (
 # ============================================================================
 # RecursiveStrategy Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 def test_recursive_strategy_initialization(mock_site_config_obj):
@@ -126,6 +128,7 @@ def test_recursive_strategy_get_next_urls_max_depth(mock_site_config_obj):
 # SelectiveStrategy Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 def test_selective_strategy_initialization(mock_site_config_obj):
     """Test SelectiveStrategy initialization."""
@@ -138,7 +141,7 @@ def test_selective_strategy_only_explicit_urls(mock_site_config_obj):
     """Test SelectiveStrategy only crawls explicitly listed patterns."""
     mock_site_config_obj.follow_patterns = [
         "^https://wiki\\.example\\.com/wiki/Main",
-        "^https://wiki\\.example\\.com/wiki/About"
+        "^https://wiki\\.example\\.com/wiki/About",
     ]
 
     strategy = SelectiveStrategy(mock_site_config_obj)
@@ -160,7 +163,7 @@ def test_selective_strategy_no_discovery(mock_site_config_obj):
     current_url = "https://wiki.example.com/wiki/Start"
     links = [
         "https://wiki.example.com/wiki/Main",  # Matches pattern
-        "https://wiki.example.com/wiki/Other"  # Doesn't match
+        "https://wiki.example.com/wiki/Other",  # Doesn't match
     ]
 
     next_urls = strategy.get_next_urls(current_url, links, current_depth=0)
@@ -182,6 +185,7 @@ def test_selective_strategy_requires_patterns(mock_site_config_obj):
 # ============================================================================
 # DepthLimitedStrategy Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 def test_depth_limited_strategy_initialization(mock_site_config_obj):
@@ -227,6 +231,7 @@ def test_depth_limited_strategy_get_next_urls(mock_site_config_obj):
 # Strategy Base Class Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 def test_strategy_base_class_is_abstract():
     """Test that CrawlStrategy base class is abstract."""
@@ -247,10 +252,15 @@ def test_normalize_url(mock_site_config_obj):
     assert strategy.normalize_url("/wiki/Page", base_url) == "https://example.com/wiki/Page"
 
     # Fragment removal
-    assert strategy.normalize_url("https://example.com/page#section", base_url) == "https://example.com/page"
+    assert (
+        strategy.normalize_url("https://example.com/page#section", base_url)
+        == "https://example.com/page"
+    )
 
     # Trailing slash removal
-    assert strategy.normalize_url("https://example.com/page/", base_url) == "https://example.com/page"
+    assert (
+        strategy.normalize_url("https://example.com/page/", base_url) == "https://example.com/page"
+    )
 
     # Invalid URL handling
     assert strategy.normalize_url(None, base_url) is None  # type: ignore

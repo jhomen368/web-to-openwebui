@@ -8,6 +8,7 @@ Tests for:
 - Upload status management
 - Directory integrity verification
 """
+
 import json
 from pathlib import Path
 from unittest.mock import patch
@@ -59,14 +60,9 @@ class TestCurrentDirectoryOperations:
         timestamp = "2025-11-20_01-00-00"
 
         # Create initial scrape
-        scrape_dir = create_test_scrape_directory(
-            tmp_outputs_dir,
-            site_name,
-            timestamp,
-            3
-        )
+        scrape_dir = create_test_scrape_directory(tmp_outputs_dir, site_name, timestamp, 3)
 
-        manager = CurrentDirectoryManager(tmp_outputs_dir, site_name)
+        CurrentDirectoryManager(tmp_outputs_dir, site_name)
         scrape_metadata = load_json_file(scrape_dir / "metadata.json")
 
         # Verify scrape structure
@@ -78,12 +74,16 @@ class TestCurrentDirectoryOperations:
         site_name = "test_wiki"
 
         # Create first scrape
-        scrape1_dir = create_test_scrape_directory(tmp_outputs_dir, site_name, "2025-11-20_01-00-00", 3)
+        scrape1_dir = create_test_scrape_directory(
+            tmp_outputs_dir, site_name, "2025-11-20_01-00-00", 3
+        )
         meta1 = load_json_file(scrape1_dir / "metadata.json")
         urls1 = {f["url"] for f in meta1["files"]}
 
         # Create second scrape with more files
-        scrape2_dir = create_test_scrape_directory(tmp_outputs_dir, site_name, "2025-11-20_02-00-00", 5)
+        scrape2_dir = create_test_scrape_directory(
+            tmp_outputs_dir, site_name, "2025-11-20_02-00-00", 5
+        )
         meta2 = load_json_file(scrape2_dir / "metadata.json")
         urls2 = {f["url"] for f in meta2["files"]}
 
@@ -96,10 +96,14 @@ class TestCurrentDirectoryOperations:
         """Test updating current/ with modified files."""
         site_name = "test_wiki"
 
-        scrape1_dir = create_test_scrape_directory(tmp_outputs_dir, site_name, "2025-11-20_01-00-00", 3)
+        scrape1_dir = create_test_scrape_directory(
+            tmp_outputs_dir, site_name, "2025-11-20_01-00-00", 3
+        )
         meta1 = load_json_file(scrape1_dir / "metadata.json")
 
-        scrape2_dir = create_test_scrape_directory(tmp_outputs_dir, site_name, "2025-11-20_02-00-00", 3)
+        scrape2_dir = create_test_scrape_directory(
+            tmp_outputs_dir, site_name, "2025-11-20_02-00-00", 3
+        )
         meta2 = load_json_file(scrape2_dir / "metadata.json")
 
         # Modify one file in second scrape
@@ -118,10 +122,14 @@ class TestCurrentDirectoryOperations:
         """Test updating current/ with deleted files."""
         site_name = "test_wiki"
 
-        scrape1_dir = create_test_scrape_directory(tmp_outputs_dir, site_name, "2025-11-20_01-00-00", 5)
+        scrape1_dir = create_test_scrape_directory(
+            tmp_outputs_dir, site_name, "2025-11-20_01-00-00", 5
+        )
         meta1 = load_json_file(scrape1_dir / "metadata.json")
 
-        scrape2_dir = create_test_scrape_directory(tmp_outputs_dir, site_name, "2025-11-20_02-00-00", 3)
+        scrape2_dir = create_test_scrape_directory(
+            tmp_outputs_dir, site_name, "2025-11-20_02-00-00", 3
+        )
         meta2 = load_json_file(scrape2_dir / "metadata.json")
 
         # Calculate deletions
@@ -136,12 +144,7 @@ class TestCurrentDirectoryOperations:
 
         # Create multiple scrapes
         create_test_scrape_directory(tmp_outputs_dir, site_name, "2025-11-20_01-00-00", 3)
-        target_dir = create_test_scrape_directory(
-            tmp_outputs_dir,
-            site_name,
-            target_timestamp,
-            5
-        )
+        target_dir = create_test_scrape_directory(tmp_outputs_dir, site_name, target_timestamp, 5)
         create_test_scrape_directory(tmp_outputs_dir, site_name, "2025-11-20_03-00-00", 4)
 
         # Verify target has correct file count
@@ -186,7 +189,7 @@ class TestCurrentDirectoryDeltaLog:
                 {
                     "timestamp": "2025-11-20_01-00-00",
                     "operation": "initial",
-                    "changes": {"added": 10, "modified": 0, "removed": 0}
+                    "changes": {"added": 10, "modified": 0, "removed": 0},
                 }
             ]
         }
@@ -208,7 +211,7 @@ class TestCurrentDirectoryDeltaLog:
                 {
                     "timestamp": "2025-11-20_01-00-00",
                     "operation": "initial",
-                    "changes": {"added": 10, "modified": 0, "removed": 0}
+                    "changes": {"added": 10, "modified": 0, "removed": 0},
                 }
             ]
         }
@@ -217,11 +220,13 @@ class TestCurrentDirectoryDeltaLog:
         save_json_file(delta_log_file, delta_log)
 
         # Append new entry
-        delta_log["deltas"].append({
-            "timestamp": "2025-11-20_02-00-00",
-            "operation": "update",
-            "changes": {"added": 2, "modified": 1, "removed": 0}
-        })
+        delta_log["deltas"].append(
+            {
+                "timestamp": "2025-11-20_02-00-00",
+                "operation": "update",
+                "changes": {"added": 2, "modified": 1, "removed": 0},
+            }
+        )
 
         save_json_file(delta_log_file, delta_log)
 
@@ -240,12 +245,12 @@ class TestCurrentDirectoryDeltaLog:
                 {
                     "timestamp": "2025-11-20_01-00-00",
                     "operation": "initial",
-                    "changes": {"added": 10, "modified": 0, "removed": 0}
+                    "changes": {"added": 10, "modified": 0, "removed": 0},
                 },
                 {
                     "timestamp": "2025-11-20_02-00-00",
                     "operation": "update",
-                    "changes": {"added": 2, "modified": 1, "removed": 0}
+                    "changes": {"added": 2, "modified": 1, "removed": 0},
                 },
             ]
         }
@@ -290,9 +295,9 @@ class TestCurrentDirectoryUploadStatus:
                     "url": "https://example.com/page1",
                     "filename": "page1.md",
                     "file_id": "file-123",
-                    "checksum": "abc123"
+                    "checksum": "abc123",
                 }
-            ]
+            ],
         }
 
         status_file = current_dir / "upload_status.json"
@@ -413,11 +418,13 @@ class TestCurrentDirectoryIntegration:
 
         # Add delta log
         delta_log = {
-            "deltas": [{
-                "timestamp": "2025-11-20_01-00-00",
-                "operation": "initial",
-                "changes": {"added": 3, "modified": 0, "removed": 0}
-            }]
+            "deltas": [
+                {
+                    "timestamp": "2025-11-20_01-00-00",
+                    "operation": "initial",
+                    "changes": {"added": 3, "modified": 0, "removed": 0},
+                }
+            ]
         }
 
         save_json_file(current_dir / "delta_log.json", delta_log)
@@ -479,7 +486,7 @@ def test_get_current_source(tmp_outputs_dir: Path):
         "site": {"name": site_name},
         "current_state": {
             "source_timestamp": source_timestamp,
-            "last_updated": "2025-11-20T02:00:00"
+            "last_updated": "2025-11-20T02:00:00",
         },
         "files": [],
     }
@@ -528,7 +535,7 @@ class TestCurrentDirectoryManagerExtended:
         tracker = MetadataTracker(tmp_outputs_dir, site_name)
 
         # Mock tracker to return None for scrape
-        with patch.object(tracker, 'get_scrape_by_timestamp', return_value=None):
+        with patch.object(tracker, "get_scrape_by_timestamp", return_value=None):
             result = manager.update_from_scrape("2025-11-20_01-00-00", tracker)
 
         assert "error" in result
@@ -706,12 +713,7 @@ class TestCurrentDirectoryManagerExtended:
             "files_uploaded": 0,
             "rebuilt_from_remote": True,
             "file_id_map": {file_url: file_id},
-            "files": [
-                {
-                    "url": file_url,
-                    "checksum": remote_checksum
-                }
-            ]
+            "files": [{"url": file_url, "checksum": remote_checksum}],
         }
 
         manager.save_upload_status(upload_result)
@@ -727,10 +729,9 @@ class TestCurrentDirectoryManagerExtended:
         manager = CurrentDirectoryManager(tmp_outputs_dir, site_name)
 
         # Mock shutil.copy2 to raise exception
-        with patch('shutil.copy2', side_effect=OSError("Copy failed")):
+        with patch("shutil.copy2", side_effect=OSError("Copy failed")):
             result = manager._copy_file_to_current(
-                "2025-11-20_01-00-00",
-                {"filepath": "test.md", "filename": "test.md"}
+                "2025-11-20_01-00-00", {"filepath": "test.md", "filename": "test.md"}
             )
 
         assert result is False
@@ -745,7 +746,7 @@ class TestCurrentDirectoryManagerExtended:
         file_info = metadata["files"][0]
 
         # Mock Path.unlink to raise exception
-        with patch('pathlib.Path.unlink', side_effect=OSError("Delete failed")):
+        with patch("pathlib.Path.unlink", side_effect=OSError("Delete failed")):
             result = manager._remove_file_from_current(file_info)
 
         assert result is False
@@ -788,30 +789,30 @@ class TestCurrentDirectoryManagerExtended:
                 "url": "https://example.com/page0",
                 "filepath": "content/page_0.md",
                 "filename": "page_0.md",
-                "checksum": "modified_hash", # Modified
-                "size": 1024
+                "checksum": "modified_hash",  # Modified
+                "size": 1024,
             },
             # page_1 deleted
             {
                 "url": "https://example.com/page2",
                 "filepath": "content/page_2.md",
                 "filename": "page_2.md",
-                "checksum": "hash0002", # Unchanged (matches helper)
-                "size": 3072
+                "checksum": "hash0002",  # Unchanged (matches helper)
+                "size": 3072,
             },
             {
                 "url": "https://example.com/page3",
                 "filepath": "content/page_3.md",
                 "filename": "page_3.md",
-                "checksum": "hash3", # Added
-                "size": 4096
-            }
+                "checksum": "hash3",  # Added
+                "size": 4096,
+            },
         ]
 
         new_metadata = {
             "site": {"name": site_name},
             "scrape": {"timestamp": curr_timestamp},
-            "files": new_files
+            "files": new_files,
         }
         save_json_file(scrape_dir / "metadata.json", new_metadata)
 
@@ -832,7 +833,9 @@ class TestCurrentDirectoryManagerExtended:
 
         # Verify delta log
         delta_log = load_json_file(current_dir / "delta_log.json")
-        assert len(delta_log["deltas"]) == 1 # create_current_directory doesn't create log, so this is first
+        assert (
+            len(delta_log["deltas"]) == 1
+        )  # create_current_directory doesn't create log, so this is first
         assert delta_log["deltas"][0]["operation"] == "update"
 
     def test_append_delta_log_corrupt(self, tmp_outputs_dir: Path):
@@ -869,38 +872,36 @@ class TestCurrentDirectoryManagerExtended:
 
         # Update current metadata
         metadata = load_json_file(current_dir / "metadata.json")
-        metadata["files"][0]["checksum"] = "new_hash_0" # Modified
+        metadata["files"][0]["checksum"] = "new_hash_0"  # Modified
         # page_1 is in metadata, let's remove it to simulate deletion
         del metadata["files"][1]
         # Add page_3
-        metadata["files"].append({
-            "url": "https://example.com/page3",
-            "filename": "page_3.md",
-            "checksum": "hash3",
-            "size": 100
-        })
+        metadata["files"].append(
+            {
+                "url": "https://example.com/page3",
+                "filename": "page_3.md",
+                "checksum": "hash3",
+                "size": 100,
+            }
+        )
         save_json_file(current_dir / "metadata.json", metadata)
 
         # Create upload status
         upload_status = {
             "site_name": site_name,
             "files": [
-                {
-                    "url": "https://example.com/page0",
-                    "checksum": "old_hash_0",
-                    "file_id": "id_0"
-                },
+                {"url": "https://example.com/page0", "checksum": "old_hash_0", "file_id": "id_0"},
                 {
                     "url": "https://example.com/page1",
-                    "checksum": "hash0001", # Matches helper
-                    "file_id": "id_1"
+                    "checksum": "hash0001",  # Matches helper
+                    "file_id": "id_1",
                 },
                 {
                     "url": "https://example.com/page2",
-                    "checksum": "hash0002", # Matches helper
-                    "file_id": "id_2"
-                }
-            ]
+                    "checksum": "hash0002",  # Matches helper
+                    "file_id": "id_2",
+                },
+            ],
         }
         save_json_file(current_dir / "upload_status.json", upload_status)
 
@@ -908,9 +909,9 @@ class TestCurrentDirectoryManagerExtended:
 
         # Check uploads (modified + new)
         upload_urls = {f["url"] for f in result["upload"]}
-        assert "https://example.com/page0" in upload_urls # Modified
-        assert "https://example.com/page3" in upload_urls # New
-        assert "https://example.com/page2" not in upload_urls # Unchanged
+        assert "https://example.com/page0" in upload_urls  # Modified
+        assert "https://example.com/page3" in upload_urls  # New
+        assert "https://example.com/page2" not in upload_urls  # Unchanged
 
         # Check deletions
         assert "https://example.com/page1" in result["delete"]

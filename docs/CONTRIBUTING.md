@@ -403,17 +403,17 @@ from webowui.module import function_to_test
 
 class TestFeature:
     """Group related tests in a class."""
-    
+
     def test_basic_functionality(self):
         """Test basic behavior."""
         result = function_to_test(input_data)
         assert result == expected_output
-    
+
     def test_handles_invalid_input(self):
         """Test error handling."""
         with pytest.raises(ValueError):
             function_to_test(invalid_input)
-    
+
     @pytest.mark.asyncio
     async def test_async_function(self):
         """Test async function."""
@@ -844,10 +844,10 @@ def test_calculate_checksum():
     # Arrange: Set up test data
     test_file = Path("/tmp/test.txt")
     test_file.write_text("hello world")
-    
+
     # Act: Execute code being tested
     result = calculate_checksum(test_file)
-    
+
     # Assert: Verify results
     assert result == "5eb63bbbe01eeed093cb22bb8f5acdc3"
 
@@ -857,10 +857,10 @@ async def test_upload_files():
     # Arrange
     mock_api = MockOpenWebUIClient()
     files = [Path("file1.md"), Path("file2.md")]
-    
+
     # Act
     results = await upload_files(mock_api, files)
-    
+
     # Assert
     assert len(results) == 2
     assert all(r.success for r in results)
@@ -908,7 +908,7 @@ async def test_upload_handles_errors():
     # Mock only the API, test real business logic
     api = MockOpenWebUIClient()
     api.set_error("api_error")
-    
+
     # This tests real retry logic with mocked API
     result = await upload_with_retry(api)
     assert result.success is False
@@ -923,19 +923,19 @@ async def test_scrape_upload_workflow():
     """Test complete scrape-to-upload workflow."""
     # 1. Load config
     config = load_config(test_config_path)
-    
+
     # 2. Scrape content
     crawler = WikiCrawler(config)
     results = await crawler.crawl()
-    
+
     # 3. Save locally
     manager = OutputManager(output_dir)
     manager.save_results(results)
-    
+
     # 4. Upload with mock API
     api = MockOpenWebUIClient()
     upload_result = await upload_to_knowledge(api, output_dir)
-    
+
     # Assert full workflow
     assert upload_result.success is True
     assert upload_result.files_uploaded > 0
@@ -1054,13 +1054,13 @@ async def upload_files(
 def calculate_checksum(file_path: Path) -> str:
     """
     Calculate MD5 checksum of file.
-    
+
     Args:
         file_path: Path to file
-    
+
     Returns:
         Hex string of MD5 checksum
-    
+
     Raises:
         FileNotFoundError: If file doesn't exist
     """

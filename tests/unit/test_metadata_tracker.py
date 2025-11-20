@@ -6,6 +6,7 @@ Tests for:
 - Change detection using checksums
 - Scrape comparison and diff calculation
 """
+
 import json
 from pathlib import Path
 
@@ -51,10 +52,7 @@ class TestMetadataTrackerScrapeTracking:
         timestamp = "2025-11-20_01-00-00"
 
         scrape_dir = create_test_scrape_directory(
-            tmp_outputs_dir,
-            site_name,
-            timestamp,
-            num_files=5
+            tmp_outputs_dir, site_name, timestamp, num_files=5
         )
 
         MetadataTracker(tmp_outputs_dir, site_name)
@@ -78,7 +76,7 @@ class TestMetadataTrackerScrapeTracking:
 
         # Latest should be the most recent one
         assert latest is not None
-        assert "2025-11-20" in latest['scrape']['timestamp']
+        assert "2025-11-20" in latest["scrape"]["timestamp"]
 
     def test_list_scrapes(self, tmp_outputs_dir: Path):
         """Test listing all scrapes."""
@@ -103,12 +101,7 @@ class TestMetadataTrackerScrapeTracking:
         target_timestamp = "2025-11-20_02-00-00"
 
         create_test_scrape_directory(tmp_outputs_dir, site_name, "2025-11-20_01-00-00", 3)
-        target_dir = create_test_scrape_directory(
-            tmp_outputs_dir,
-            site_name,
-            target_timestamp,
-            4
-        )
+        target_dir = create_test_scrape_directory(tmp_outputs_dir, site_name, target_timestamp, 4)
         create_test_scrape_directory(tmp_outputs_dir, site_name, "2025-11-20_03-00-00", 5)
 
         MetadataTracker(tmp_outputs_dir, site_name)
@@ -223,9 +216,6 @@ class TestMetadataTrackerComparison:
         # Simulate: Replace first old with new, keep some, modify one, add one new
         file_urls_1 = {f["url"] for f in meta1["files"]}
         file_urls_2 = {f["url"] for f in meta2["files"]}
-
-        added = file_urls_2 - file_urls_1
-        deleted = file_urls_1 - file_urls_2
 
         # From creation parameters, we expect different file counts
         assert len(file_urls_1) == 5
@@ -348,7 +338,9 @@ class TestMetadataTrackerEdgeCases:
     def test_missing_files_in_metadata(self, tmp_outputs_dir: Path):
         """Test metadata referencing missing content files."""
         site_name = "test_wiki"
-        scrape_dir = create_test_scrape_directory(tmp_outputs_dir, site_name, "2025-11-20_01-00-00", 3)
+        scrape_dir = create_test_scrape_directory(
+            tmp_outputs_dir, site_name, "2025-11-20_01-00-00", 3
+        )
 
         # Delete one content file
         metadata = load_json_file(scrape_dir / "metadata.json")
@@ -364,7 +356,9 @@ class TestMetadataTrackerEdgeCases:
     def test_empty_scrape(self, tmp_outputs_dir: Path):
         """Test handling of empty scrape (zero files)."""
         site_name = "test_wiki"
-        scrape_dir = create_test_scrape_directory(tmp_outputs_dir, site_name, "2025-11-20_01-00-00", 0)
+        scrape_dir = create_test_scrape_directory(
+            tmp_outputs_dir, site_name, "2025-11-20_01-00-00", 0
+        )
 
         metadata = load_json_file(scrape_dir / "metadata.json")
 
@@ -475,12 +469,7 @@ class TestMetadataTrackerIntegration:
         site_name = "test_wiki"
         timestamp = "2025-11-20_01-00-00"
 
-        scrape_dir = create_test_scrape_directory(
-            tmp_outputs_dir,
-            site_name,
-            timestamp,
-            3
-        )
+        scrape_dir = create_test_scrape_directory(tmp_outputs_dir, site_name, timestamp, 3)
 
         metadata = load_json_file(scrape_dir / "metadata.json")
 

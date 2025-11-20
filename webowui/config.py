@@ -180,7 +180,7 @@ class SiteConfig:
 
                     if other_knowledge_id == self.knowledge_id and other_site_name:
                         sharing_sites.append(other_site_name)
-                except Exception:
+                except Exception:  # nosec
                     continue
 
             if sharing_sites:

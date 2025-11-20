@@ -8,6 +8,7 @@ Tests the modular profile system:
 - FandomWikiProfile: Fandom-specific additions
 - CleaningProfileRegistry: Profile discovery and management
 """
+
 from typing import Any
 
 import pytest
@@ -23,6 +24,7 @@ from tests.fixtures.sample_content import (
 # ============================================================================
 # Base Profile Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 def test_base_profile_config_schema():
@@ -62,6 +64,7 @@ def test_base_profile_get_description():
 # ============================================================================
 # None Profile Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 def test_none_profile_no_changes():
@@ -114,6 +117,7 @@ def test_none_profile_initialization():
 # ============================================================================
 # MediaWiki Profile Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 def test_mediawiki_profile_remove_navigation():
@@ -199,10 +203,12 @@ def test_mediawiki_profile_preserves_main_content():
         MediaWikiProfile,
     )
 
-    profile = MediaWikiProfile({
-        "remove_citations": True,
-        "remove_categories": True,
-    })
+    profile = MediaWikiProfile(
+        {
+            "remove_citations": True,
+            "remove_categories": True,
+        }
+    )
 
     content = """# Important Content
 
@@ -280,6 +286,7 @@ def test_mediawiki_profile_config_selective():
 # ============================================================================
 # Fandom Profile Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 def test_fandom_profile_extends_mediawiki():
@@ -394,10 +401,12 @@ def test_fandom_profile_real_content():
         FandomWikiProfile,
     )
 
-    profile = FandomWikiProfile({
-        "remove_fandom_ads": True,
-        "remove_community_content": True,
-    })
+    profile = FandomWikiProfile(
+        {
+            "remove_fandom_ads": True,
+            "remove_community_content": True,
+        }
+    )
 
     result = profile.clean(FANDOM_MARKDOWN)
 
@@ -408,6 +417,7 @@ def test_fandom_profile_real_content():
 # ============================================================================
 # Profile Registry Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 def test_registry_discover_profiles():
@@ -519,15 +529,19 @@ def test_registry_register_custom_profile():
 # Integration Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 def test_profile_workflow_mediawiki_realistic():
     """Test realistic MediaWiki content cleaning workflow."""
     from webowui.scraper.cleaning_profiles.registry import CleaningProfileRegistry
 
-    profile = CleaningProfileRegistry.get_profile("mediawiki", {
-        "remove_citations": True,
-        "remove_categories": True,
-    })
+    profile = CleaningProfileRegistry.get_profile(
+        "mediawiki",
+        {
+            "remove_citations": True,
+            "remove_categories": True,
+        },
+    )
 
     result = profile.clean(MEDIAWIKI_MARKDOWN)
 

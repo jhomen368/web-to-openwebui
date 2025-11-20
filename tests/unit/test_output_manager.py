@@ -7,6 +7,7 @@ Tests for:
 - Metadata generation
 - Checksum calculation
 """
+
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -37,7 +38,9 @@ class TestOutputManagerInitialization:
         assert manager.base_output_dir == Path(tmp_outputs_dir)
         assert manager.config == config
 
-    def test_output_manager_directory_creation(self, tmp_outputs_dir: Path, sample_site_config: dict[str, Any]):
+    def test_output_manager_directory_creation(
+        self, tmp_outputs_dir: Path, sample_site_config: dict[str, Any]
+    ):
         """Test that OutputManager creates output directories."""
         config = MagicMock()
         config.name = "test_wiki"
@@ -132,7 +135,9 @@ class TestOutputManagerSaving:
         result.timestamp.isoformat.return_value = "2025-11-20T01:00:00"
 
         # Mock CleaningProfileRegistry
-        with patch("webowui.scraper.cleaning_profiles.CleaningProfileRegistry.get_profile") as mock_get_profile:
+        with patch(
+            "webowui.scraper.cleaning_profiles.CleaningProfileRegistry.get_profile"
+        ) as mock_get_profile:
             mock_profile = MagicMock()
             mock_profile.clean.return_value = "# Page 1 Content Cleaned"
             mock_get_profile.return_value = mock_profile
@@ -168,7 +173,9 @@ class TestOutputManagerSaving:
         result.timestamp.isoformat.return_value = "2025-11-20T01:00:00"
 
         # Mock CleaningProfileRegistry to raise exception
-        with patch("webowui.scraper.cleaning_profiles.CleaningProfileRegistry.get_profile") as mock_get_profile:
+        with patch(
+            "webowui.scraper.cleaning_profiles.CleaningProfileRegistry.get_profile"
+        ) as mock_get_profile:
             mock_get_profile.side_effect = Exception("Profile not found")
 
             file_info = manager._save_page(result)

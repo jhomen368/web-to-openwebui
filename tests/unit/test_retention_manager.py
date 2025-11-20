@@ -7,6 +7,7 @@ Tests for:
 - Protection rules (current/ and current_source)
 - Status reporting and recommendations
 """
+
 from pathlib import Path
 
 import pytest
@@ -220,7 +221,7 @@ class TestRetentionStatusAndReporting:
         site_name = "test_wiki"
         source_timestamp = "2025-11-20_02-00-00"
 
-        source_dir = create_test_scrape_directory(tmp_outputs_dir, site_name, source_timestamp, 3)
+        create_test_scrape_directory(tmp_outputs_dir, site_name, source_timestamp, 3)
 
         # Create current from source
         current_dir = tmp_outputs_dir / site_name / "current"
@@ -279,7 +280,9 @@ class TestRetentionEdgeCases:
         scrape_dir = tmp_outputs_dir / site_name / timestamp
         scrape_dir.mkdir(parents=True)
 
-        source_dir = create_test_scrape_directory(tmp_outputs_dir, site_name, "2025-11-20_02-00-00", 3)
+        source_dir = create_test_scrape_directory(
+            tmp_outputs_dir, site_name, "2025-11-20_02-00-00", 3
+        )
 
         # Create current from source
         current_dir = tmp_outputs_dir / site_name / "current"

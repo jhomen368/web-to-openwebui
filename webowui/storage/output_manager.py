@@ -8,7 +8,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from slugify import slugify
+from slugify import slugify  # type: ignore
 
 from ..config import SiteConfig
 from ..scraper.crawler import CrawlResult

@@ -4,6 +4,7 @@ Mock OpenWebUI client for testing.
 Provides MockOpenWebUIClient that implements the same interface as the real
 OpenWebUIClient but with configurable mock behavior.
 """
+
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +12,7 @@ from typing import Any
 class MockOpenWebUIClient:
     """
     Mock OpenWebUI client for testing.
-    
+
     Simulates OpenWebUI API responses without requiring a real server.
     Can be configured to return specific responses or raise exceptions.
     """
@@ -314,10 +315,12 @@ class MockOpenWebUIClient:
             method_name: Name of method called
             args: Arguments passed to method
         """
-        self.call_history.append({
-            "method": method_name,
-            "args": args or {},
-        })
+        self.call_history.append(
+            {
+                "method": method_name,
+                "args": args or {},
+            }
+        )
 
     def get_call_count(self, method_name: str) -> int:
         """

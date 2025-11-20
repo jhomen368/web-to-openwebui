@@ -10,6 +10,7 @@ Tests the OpenWebUIClient class with mock responses, covering:
 - Incremental upload workflow
 - Error handling and edge cases
 """
+
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -22,10 +23,12 @@ from webowui.uploader.openwebui_client import OpenWebUIClient
 # Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def client():
     """Create an OpenWebUIClient instance."""
     return OpenWebUIClient("http://localhost:8000", "test-key-123")
+
 
 @pytest.fixture
 def mock_session():
@@ -35,9 +38,11 @@ def mock_session():
         mock.return_value.__aenter__.return_value = session
         yield session
 
+
 # ============================================================================
 # Initialization Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 def test_client_init():
@@ -59,6 +64,7 @@ def test_client_init_strip_slash():
 # ============================================================================
 # Connection Testing
 # ============================================================================
+
 
 @pytest.mark.unit
 @pytest.mark.asyncio
@@ -107,6 +113,7 @@ async def test_test_connection_exception(client, mock_session):
 # Knowledge Base Creation Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_create_knowledge_new(client, mock_session):
@@ -135,8 +142,8 @@ async def test_create_knowledge_new(client, mock_session):
     assert result["name"] == "Test KB"
 
     # Verify calls
-    mock_session.get.assert_called_once() # Check existence
-    mock_session.post.assert_called_once() # Create
+    mock_session.get.assert_called_once()  # Check existence
+    mock_session.post.assert_called_once()  # Create
 
     # Verify create payload
     args, kwargs = mock_session.post.call_args
@@ -162,7 +169,7 @@ async def test_create_knowledge_existing(client, mock_session):
 
     # Verify calls
     mock_session.get.assert_called_once()
-    mock_session.post.assert_not_called() # Should not create new
+    mock_session.post.assert_not_called()  # Should not create new
 
 
 @pytest.mark.unit
@@ -190,6 +197,7 @@ async def test_create_knowledge_failure(client, mock_session):
 # ============================================================================
 # File Upload Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 @pytest.mark.asyncio
@@ -263,12 +271,13 @@ async def test_upload_files_failure(client, mock_session, tmp_dir: Path):
 
     result = await client.upload_files([file_path])
 
-    assert len(result) == 0 # No successful results
+    assert len(result) == 0  # No successful results
 
 
 # ============================================================================
 # Knowledge Base File Operations
 # ============================================================================
+
 
 @pytest.mark.unit
 @pytest.mark.asyncio
@@ -308,14 +317,14 @@ async def test_add_files_to_knowledge_batch_fallback(client, mock_session):
     mock_session.post.return_value.__aenter__.side_effect = [
         mock_batch_response,
         mock_indiv_response,
-        mock_indiv_response
+        mock_indiv_response,
     ]
 
     result = await client.add_files_to_knowledge_batch("kb-123", ["file-1", "file-2"])
 
     assert result["success"] is True
     assert result["files_added"] == 2
-    assert mock_session.post.call_count == 3 # 1 batch + 2 individual
+    assert mock_session.post.call_count == 3  # 1 batch + 2 individual
 
 
 @pytest.mark.unit
@@ -328,7 +337,7 @@ async def test_get_knowledge_files(client, mock_session):
     mock_response.json.return_value = {
         "files": [
             {"id": "file-1", "filename": "test1.md"},
-            {"id": "file-2", "filename": "test2.md"}
+            {"id": "file-2", "filename": "test2.md"},
         ]
     }
     mock_session.get.return_value.__aenter__.return_value = mock_response
@@ -373,7 +382,7 @@ async def test_remove_file_from_knowledge_404(client, mock_session):
 
     result = await client.remove_file_from_knowledge("kb-123", "file-1")
 
-    assert result is True # Should return True for 404
+    assert result is True  # Should return True for 404
 
 
 @pytest.mark.unit
@@ -394,6 +403,7 @@ async def test_remove_file_from_knowledge_failure(client, mock_session):
 # ============================================================================
 # File Operations Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 @pytest.mark.asyncio
@@ -485,7 +495,7 @@ async def test_delete_file_404(client, mock_session):
 
     result = await client.delete_file("file-123")
 
-    assert result is True # Should return True for 404
+    assert result is True  # Should return True for 404
 
 
 @pytest.mark.unit
@@ -520,6 +530,7 @@ async def test_get_file_process_status_not_found(client, mock_session):
 # Incremental Upload Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_upload_scrape_incrementally_new(client, mock_session, tmp_dir: Path):
@@ -551,13 +562,13 @@ async def test_upload_scrape_incrementally_new(client, mock_session, tmp_dir: Pa
 
     # Configure side effects
     mock_session.get.return_value.__aenter__.side_effect = [
-        mock_list_kb, # Check KB existence
+        mock_list_kb,  # Check KB existence
         mock_status,  # Check file status
     ]
     mock_session.post.return_value.__aenter__.side_effect = [
-        mock_create_kb, # Create KB
-        mock_upload,    # Upload file
-        mock_add,       # Add to KB
+        mock_create_kb,  # Create KB
+        mock_upload,  # Upload file
+        mock_add,  # Add to KB
     ]
 
     result = await client.upload_scrape_incrementally(
@@ -566,7 +577,7 @@ async def test_upload_scrape_incrementally_new(client, mock_session, tmp_dir: Pa
         knowledge_name="Test KB",
         files_to_upload=files_to_upload,
         files_to_delete=[],
-        previous_file_map={}
+        previous_file_map={},
     )
 
     assert result["success"] is True
@@ -598,7 +609,7 @@ async def test_upload_scrape_incrementally_update(client, mock_session, tmp_dir:
 
     # Configure side effects
     mock_session.get.return_value.__aenter__.side_effect = [
-        mock_list_kb, # Check KB existence
+        mock_list_kb,  # Check KB existence
         mock_verify,  # Verify file exists
     ]
     mock_session.post.return_value.__aenter__.side_effect = [
@@ -612,7 +623,7 @@ async def test_upload_scrape_incrementally_update(client, mock_session, tmp_dir:
         knowledge_name="Test KB",
         files_to_upload=files_to_upload,
         files_to_delete=[],
-        previous_file_map=previous_map
+        previous_file_map=previous_map,
     )
 
     assert result["success"] is True
@@ -648,7 +659,7 @@ async def test_upload_scrape_incrementally_delete(client, mock_session, tmp_dir:
         knowledge_name="Test KB",
         files_to_upload=[],
         files_to_delete=files_to_delete,
-        previous_file_map=previous_map
+        previous_file_map=previous_map,
     )
 
     assert result["success"] is True
@@ -668,9 +679,7 @@ async def test_upload_scrape_incrementally_cleanup_untracked(client, mock_sessio
     # 2. Get knowledge files (find untracked)
     mock_files = AsyncMock(status=200)
     mock_files.json.return_value = {
-        "files": [
-            {"id": "file-1", "meta": {"name": "test-site/untracked.md"}}
-        ]
+        "files": [{"id": "file-1", "meta": {"name": "test-site/untracked.md"}}]
     }
 
     # 3. Remove from KB
@@ -680,8 +689,8 @@ async def test_upload_scrape_incrementally_cleanup_untracked(client, mock_sessio
     mock_delete = AsyncMock(status=200)
 
     mock_session.get.return_value.__aenter__.side_effect = [
-        mock_list_kb, # Check KB
-        mock_files,   # Get files for cleanup
+        mock_list_kb,  # Check KB
+        mock_files,  # Get files for cleanup
     ]
     mock_session.post.return_value.__aenter__.return_value = mock_remove
     mock_session.delete.return_value.__aenter__.return_value = mock_delete
@@ -692,7 +701,7 @@ async def test_upload_scrape_incrementally_cleanup_untracked(client, mock_sessio
         knowledge_name="Test KB",
         files_to_upload=[],
         files_to_delete=[],
-        cleanup_untracked=True
+        cleanup_untracked=True,
     )
 
     assert result["success"] is True
@@ -731,13 +740,13 @@ async def test_upload_scrape_incrementally_verification_fail(client, mock_sessio
     mock_add.json.return_value = {"success": True}
 
     mock_session.get.return_value.__aenter__.side_effect = [
-        mock_list_kb, # Check KB
+        mock_list_kb,  # Check KB
         mock_verify,  # Verify file (fails)
         mock_status,  # Check status
     ]
     mock_session.post.return_value.__aenter__.side_effect = [
         mock_upload,  # Upload new
-        mock_add,     # Add to KB
+        mock_add,  # Add to KB
     ]
 
     result = await client.upload_scrape_incrementally(
@@ -747,7 +756,7 @@ async def test_upload_scrape_incrementally_verification_fail(client, mock_sessio
         files_to_upload=files_to_upload,
         files_to_delete=[],
         previous_file_map=previous_map,
-        verify_before_update=True
+        verify_before_update=True,
     )
 
     assert result["success"] is True
@@ -758,6 +767,7 @@ async def test_upload_scrape_incrementally_verification_fail(client, mock_sessio
 # ============================================================================
 # File Processing Wait Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 @pytest.mark.asyncio
@@ -770,10 +780,7 @@ async def test_wait_for_file_processing_success(client, mock_session):
     mock_completed = AsyncMock(status=200)
     mock_completed.json.return_value = {"status": "completed"}
 
-    mock_session.get.return_value.__aenter__.side_effect = [
-        mock_processing,
-        mock_completed
-    ]
+    mock_session.get.return_value.__aenter__.side_effect = [mock_processing, mock_completed]
 
     # Use a short timeout and sleep to make test fast
     with patch("asyncio.sleep", new_callable=AsyncMock):
@@ -823,6 +830,7 @@ async def test_wait_for_file_processing_timeout(client, mock_session):
 # State Reconciliation Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_match_and_reconcile_hash_match(client, mock_session):
@@ -830,7 +838,7 @@ async def test_match_and_reconcile_hash_match(client, mock_session):
     local_metadata = {
         "files": [
             {"url": "http://test.com/1", "filename": "test1.md", "checksum": "hash1"},
-            {"url": "http://test.com/2", "filename": "test2.md", "checksum": "hash2"}
+            {"url": "http://test.com/2", "filename": "test2.md", "checksum": "hash2"},
         ]
     }
 
@@ -839,20 +847,28 @@ async def test_match_and_reconcile_hash_match(client, mock_session):
     mock_response.json.return_value = {
         "files": [
             {"id": "file-1", "filename": "test1.md", "meta": {"name": "site/test1.md"}},
-            {"id": "file-2", "filename": "test2.md", "meta": {"name": "site/test2.md"}}
+            {"id": "file-2", "filename": "test2.md", "meta": {"name": "site/test2.md"}},
         ]
     }
 
     # Mock file details (hashes)
     mock_details_1 = AsyncMock(status=200)
-    mock_details_1.json.return_value = {"id": "file-1", "hash": "hash1", "meta": {"name": "site/test1.md"}}
+    mock_details_1.json.return_value = {
+        "id": "file-1",
+        "hash": "hash1",
+        "meta": {"name": "site/test1.md"},
+    }
     mock_details_2 = AsyncMock(status=200)
-    mock_details_2.json.return_value = {"id": "file-2", "hash": "hash2", "meta": {"name": "site/test2.md"}}
+    mock_details_2.json.return_value = {
+        "id": "file-2",
+        "hash": "hash2",
+        "meta": {"name": "site/test2.md"},
+    }
 
     mock_session.get.return_value.__aenter__.side_effect = [
-        mock_response,   # get_knowledge_files
+        mock_response,  # get_knowledge_files
         mock_details_1,  # get_file_details 1
-        mock_details_2   # get_file_details 2
+        mock_details_2,  # get_file_details 2
     ]
 
     result = await client.match_and_reconcile("kb-1", "site", local_metadata)
@@ -869,27 +885,24 @@ async def test_match_and_reconcile_hash_match(client, mock_session):
 async def test_match_and_reconcile_filename_match(client, mock_session):
     """Test matching files by filename (content changed)."""
     local_metadata = {
-        "files": [
-            {"url": "http://test.com/1", "filename": "test1.md", "checksum": "new_hash"}
-        ]
+        "files": [{"url": "http://test.com/1", "filename": "test1.md", "checksum": "new_hash"}]
     }
 
     # Mock remote files
     mock_response = AsyncMock(status=200)
     mock_response.json.return_value = {
-        "files": [
-            {"id": "file-1", "filename": "test1.md", "meta": {"name": "site/test1.md"}}
-        ]
+        "files": [{"id": "file-1", "filename": "test1.md", "meta": {"name": "site/test1.md"}}]
     }
 
     # Mock file details (old hash)
     mock_details = AsyncMock(status=200)
-    mock_details.json.return_value = {"id": "file-1", "hash": "old_hash", "meta": {"name": "site/test1.md"}}
+    mock_details.json.return_value = {
+        "id": "file-1",
+        "hash": "old_hash",
+        "meta": {"name": "site/test1.md"},
+    }
 
-    mock_session.get.return_value.__aenter__.side_effect = [
-        mock_response,
-        mock_details
-    ]
+    mock_session.get.return_value.__aenter__.side_effect = [mock_response, mock_details]
 
     result = await client.match_and_reconcile("kb-1", "site", local_metadata)
 
@@ -905,9 +918,7 @@ async def test_match_and_reconcile_filename_match(client, mock_session):
 async def test_match_and_reconcile_no_match(client, mock_session):
     """Test no matches found."""
     local_metadata = {
-        "files": [
-            {"url": "http://test.com/1", "filename": "test1.md", "checksum": "hash1"}
-        ]
+        "files": [{"url": "http://test.com/1", "filename": "test1.md", "checksum": "hash1"}]
     }
 
     # Mock remote files (empty or different)
@@ -928,6 +939,7 @@ async def test_match_and_reconcile_no_match(client, mock_session):
 # State Health Tests
 # ============================================================================
 
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_check_state_health_healthy(client, mock_session):
@@ -935,7 +947,7 @@ async def test_check_state_health_healthy(client, mock_session):
     local_metadata = {
         "files": [
             {"file_id": "file-1", "filename": "test1.md"},
-            {"file_id": "file-2", "filename": "test2.md"}
+            {"file_id": "file-2", "filename": "test2.md"},
         ]
     }
 
@@ -944,7 +956,7 @@ async def test_check_state_health_healthy(client, mock_session):
     mock_response.json.return_value = {
         "files": [
             {"id": "file-1", "filename": "test1.md", "meta": {"name": "site/test1.md"}},
-            {"id": "file-2", "filename": "test2.md", "meta": {"name": "site/test2.md"}}
+            {"id": "file-2", "filename": "test2.md", "meta": {"name": "site/test2.md"}},
         ]
     }
 
@@ -957,7 +969,7 @@ async def test_check_state_health_healthy(client, mock_session):
     mock_session.get.return_value.__aenter__.side_effect = [
         mock_response,
         mock_details_1,
-        mock_details_2
+        mock_details_2,
     ]
 
     result = await client.check_state_health("kb-1", "site", local_metadata)
@@ -973,16 +985,11 @@ async def test_check_state_health_missing_local(client, mock_session):
     """Test missing local state."""
     # Mock remote files
     mock_response = AsyncMock(status=200)
-    mock_response.json.return_value = {
-        "files": [{"id": "file-1"}]
-    }
+    mock_response.json.return_value = {"files": [{"id": "file-1"}]}
     mock_details = AsyncMock(status=200)
     mock_details.json.return_value = {"id": "file-1"}
 
-    mock_session.get.return_value.__aenter__.side_effect = [
-        mock_response,
-        mock_details
-    ]
+    mock_session.get.return_value.__aenter__.side_effect = [mock_response, mock_details]
 
     result = await client.check_state_health("kb-1", "site", None)
 
@@ -995,11 +1002,7 @@ async def test_check_state_health_missing_local(client, mock_session):
 @pytest.mark.asyncio
 async def test_check_state_health_corrupted(client, mock_session):
     """Test corrupted state (all local files missing from remote)."""
-    local_metadata = {
-        "files": [
-            {"file_id": "file-1", "filename": "test1.md"}
-        ]
-    }
+    local_metadata = {"files": [{"file_id": "file-1", "filename": "test1.md"}]}
 
     # Mock remote files (empty)
     mock_response = AsyncMock(status=200)
@@ -1021,7 +1024,7 @@ async def test_check_state_health_degraded(client, mock_session):
     local_metadata = {
         "files": [
             {"file_id": "file-1", "filename": "test1.md"},
-            {"file_id": "file-2", "filename": "test2.md"}
+            {"file_id": "file-2", "filename": "test2.md"},
         ]
     }
 
@@ -1030,7 +1033,7 @@ async def test_check_state_health_degraded(client, mock_session):
     mock_response.json.return_value = {
         "files": [
             {"id": "file-2", "filename": "test2.md", "meta": {"name": "site/test2.md"}},
-            {"id": "file-3", "filename": "test3.md", "meta": {"name": "site/test3.md"}}
+            {"id": "file-3", "filename": "test3.md", "meta": {"name": "site/test3.md"}},
         ]
     }
 
@@ -1042,20 +1045,21 @@ async def test_check_state_health_degraded(client, mock_session):
     mock_session.get.return_value.__aenter__.side_effect = [
         mock_response,
         mock_details_2,
-        mock_details_3
+        mock_details_3,
     ]
 
     result = await client.check_state_health("kb-1", "site", local_metadata)
 
     assert result["status"] == "degraded"
     assert result["needs_rebuild"] is False
-    assert result["missing_remote"] == 1 # file-1
-    assert result["extra_remote"] == 1   # file-3
+    assert result["missing_remote"] == 1  # file-1
+    assert result["extra_remote"] == 1  # file-3
 
 
 # ============================================================================
 # Full Upload Workflow Tests
 # ============================================================================
+
 
 @pytest.mark.unit
 @pytest.mark.asyncio
@@ -1085,19 +1089,17 @@ async def test_upload_scrape_to_knowledge_success(client, mock_session, tmp_dir:
     mock_add.json.return_value = {"success": True, "files_added": 1}
 
     mock_session.get.return_value.__aenter__.side_effect = [
-        mock_list_kb, # Check KB existence
+        mock_list_kb,  # Check KB existence
         mock_status,  # Check file status
     ]
     mock_session.post.return_value.__aenter__.side_effect = [
-        mock_create_kb, # Create KB
-        mock_upload,    # Upload file
-        mock_add,       # Add to KB
+        mock_create_kb,  # Create KB
+        mock_upload,  # Upload file
+        mock_add,  # Add to KB
     ]
 
     result = await client.upload_scrape_to_knowledge(
-        scrape_dir=tmp_dir,
-        site_name="test-site",
-        knowledge_name="Test KB"
+        scrape_dir=tmp_dir, site_name="test-site", knowledge_name="Test KB"
     )
 
     assert result["success"] is True
@@ -1111,9 +1113,7 @@ async def test_upload_scrape_to_knowledge_success(client, mock_session, tmp_dir:
 async def test_upload_scrape_to_knowledge_no_files(client, tmp_dir: Path):
     """Test full upload with no files."""
     result = await client.upload_scrape_to_knowledge(
-        scrape_dir=tmp_dir,
-        site_name="test-site",
-        knowledge_name="Test KB"
+        scrape_dir=tmp_dir, site_name="test-site", knowledge_name="Test KB"
     )
 
     assert "error" in result
@@ -1132,22 +1132,17 @@ async def test_upload_scrape_to_knowledge_upload_fail(client, mock_session, tmp_
     mock_list_kb = AsyncMock(status=200)
     mock_list_kb.json.return_value = []
     mock_create_kb = AsyncMock(status=200)
-    mock_create_kb.json.return_value = {"id": "kb-1"}
+    mock_create_kb.json.return_value = {"id": "kb-1", "name": "Test KB"}
 
     # 2. Upload file (fail)
     mock_upload = AsyncMock(status=500)
     mock_upload.text.return_value = "Error"
 
     mock_session.get.return_value.__aenter__.return_value = mock_list_kb
-    mock_session.post.return_value.__aenter__.side_effect = [
-        mock_create_kb,
-        mock_upload
-    ]
+    mock_session.post.return_value.__aenter__.side_effect = [mock_create_kb, mock_upload]
 
     result = await client.upload_scrape_to_knowledge(
-        scrape_dir=tmp_dir,
-        site_name="test-site",
-        knowledge_name="Test KB"
+        scrape_dir=tmp_dir, site_name="test-site", knowledge_name="Test KB"
     )
 
     assert "error" in result

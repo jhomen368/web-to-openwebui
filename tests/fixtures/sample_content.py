@@ -4,6 +4,7 @@ Sample test content data.
 Provides predefined test content including markdown, HTML, and metadata
 for use in content cleaning and processor tests.
 """
+
 import json
 from typing import Any
 
@@ -448,16 +449,17 @@ EDGE_CASE_CONTENT: dict[str, str] = {
 # Helper Functions
 # ============================================================================
 
+
 def get_markdown_variation(name: str) -> str:
     """
     Get a markdown content variation by name.
-    
+
     Args:
         name: Variation name (basic, with_code, with_tables, etc.)
-    
+
     Returns:
         str: Markdown content
-    
+
     Raises:
         KeyError: If variation not found
     """
@@ -475,8 +477,7 @@ def get_markdown_variation(name: str) -> str:
 
     if name not in variations:
         raise KeyError(
-            f"Unknown markdown variation: {name}. "
-            f"Available: {', '.join(variations.keys())}"
+            f"Unknown markdown variation: {name}. " f"Available: {', '.join(variations.keys())}"
         )
 
     return variations[name]
@@ -485,13 +486,13 @@ def get_markdown_variation(name: str) -> str:
 def get_html_sample(name: str) -> str:
     """
     Get an HTML content sample by name.
-    
+
     Args:
         name: Sample name (basic, mediawiki, fandom)
-    
+
     Returns:
         str: HTML content
-    
+
     Raises:
         KeyError: If sample not found
     """
@@ -502,10 +503,7 @@ def get_html_sample(name: str) -> str:
     }
 
     if name not in samples:
-        raise KeyError(
-            f"Unknown HTML sample: {name}. "
-            f"Available: {', '.join(samples.keys())}"
-        )
+        raise KeyError(f"Unknown HTML sample: {name}. " f"Available: {', '.join(samples.keys())}")
 
     return samples[name]
 
@@ -513,13 +511,13 @@ def get_html_sample(name: str) -> str:
 def get_metadata_json_string(name: str = "scrape") -> str:
     """
     Get metadata as JSON string.
-    
+
     Args:
         name: Type of metadata (scrape, upload, delta)
-    
+
     Returns:
         str: JSON string
-    
+
     Raises:
         KeyError: If metadata type not found
     """
@@ -531,8 +529,7 @@ def get_metadata_json_string(name: str = "scrape") -> str:
 
     if name not in metadata_map:
         raise KeyError(
-            f"Unknown metadata type: {name}. "
-            f"Available: {', '.join(metadata_map.keys())}"
+            f"Unknown metadata type: {name}. " f"Available: {', '.join(metadata_map.keys())}"
         )
 
     return json.dumps(metadata_map[name], indent=2)

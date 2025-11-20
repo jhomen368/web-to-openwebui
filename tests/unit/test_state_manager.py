@@ -9,6 +9,7 @@ Tests for:
 - Health checking
 - State info retrieval
 """
+
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -24,12 +25,14 @@ def _create_test_metadata(site_name: str, timestamp: str, num_files: int = 3) ->
     """Helper to create test metadata without file I/O."""
     files = []
     for i in range(num_files):
-        files.append({
-            "url": f"https://example.com/page{i}",
-            "filepath": f"content/page{i}.md",
-            "checksum": f"hash{i:04d}",
-            "size": 1024 * (i + 1),
-        })
+        files.append(
+            {
+                "url": f"https://example.com/page{i}",
+                "filepath": f"content/page{i}.md",
+                "checksum": f"hash{i:04d}",
+                "size": 1024 * (i + 1),
+            }
+        )
 
     return {
         "site": {
@@ -91,9 +94,7 @@ class TestDetectStateStatus:
         assert rebuilt is None
 
     @pytest.mark.asyncio
-    async def test_detect_state_non_incremental(
-        self, tmp_outputs_dir: Path, mock_openwebui_client
-    ):
+    async def test_detect_state_non_incremental(self, tmp_outputs_dir: Path, mock_openwebui_client):
         """Test non-incremental upload (no rebuild needed)."""
         site_name = "test_wiki"
         current_manager = CurrentDirectoryManager(tmp_outputs_dir, site_name)
@@ -130,12 +131,14 @@ class TestDetectStateStatus:
         current_manager.save_upload_status = MagicMock()
 
         # Mock successful rebuild
-        mock_openwebui_client._rebuild_state_inline = AsyncMock(return_value={
-            "knowledge_id": "kb-123",
-            "files_uploaded": 3,
-            "rebuild_confidence": "high",
-            "rebuild_match_rate": 1.0,
-        })
+        mock_openwebui_client._rebuild_state_inline = AsyncMock(
+            return_value={
+                "knowledge_id": "kb-123",
+                "files_uploaded": 3,
+                "rebuild_confidence": "high",
+                "rebuild_match_rate": 1.0,
+            }
+        )
 
         state_mgr = StateManager(current_manager, mock_openwebui_client)
 
@@ -171,15 +174,15 @@ class TestDetectStateStatus:
         current_manager.save_upload_status = MagicMock()
 
         # Mock finding knowledge ID
-        mock_openwebui_client.find_knowledge_by_content = AsyncMock(
-            return_value="kb-found-456"
+        mock_openwebui_client.find_knowledge_by_content = AsyncMock(return_value="kb-found-456")
+        mock_openwebui_client._rebuild_state_inline = AsyncMock(
+            return_value={
+                "knowledge_id": "kb-found-456",
+                "files_uploaded": 3,
+                "rebuild_confidence": "medium",
+                "rebuild_match_rate": 0.9,
+            }
         )
-        mock_openwebui_client._rebuild_state_inline = AsyncMock(return_value={
-            "knowledge_id": "kb-found-456",
-            "files_uploaded": 3,
-            "rebuild_confidence": "medium",
-            "rebuild_match_rate": 0.9,
-        })
 
         state_mgr = StateManager(current_manager, mock_openwebui_client)
 
@@ -221,9 +224,7 @@ class TestDetectStateStatus:
         assert rebuilt is None
 
     @pytest.mark.asyncio
-    async def test_detect_state_rebuild_fails(
-        self, tmp_outputs_dir: Path, mock_openwebui_client
-    ):
+    async def test_detect_state_rebuild_fails(self, tmp_outputs_dir: Path, mock_openwebui_client):
         """Test when rebuild attempt fails."""
         site_name = "test_wiki"
         current_dir = tmp_outputs_dir / site_name / "current"
@@ -281,9 +282,7 @@ class TestRebuildFromRemote:
             "rebuild_match_rate": 1.0,
             "files": [],
         }
-        mock_openwebui_client._rebuild_state_inline = AsyncMock(
-            return_value=rebuilt_status
-        )
+        mock_openwebui_client._rebuild_state_inline = AsyncMock(return_value=rebuilt_status)
 
         state_mgr = StateManager(current_manager, mock_openwebui_client)
 
@@ -324,9 +323,7 @@ class TestRebuildFromRemote:
             "rebuild_confidence": "medium",
             "rebuild_match_rate": 0.85,
         }
-        mock_openwebui_client._rebuild_state_inline = AsyncMock(
-            return_value=rebuilt_status
-        )
+        mock_openwebui_client._rebuild_state_inline = AsyncMock(return_value=rebuilt_status)
 
         state_mgr = StateManager(current_manager, mock_openwebui_client)
 
@@ -346,9 +343,7 @@ class TestRebuildFromRemote:
         assert upload_status is None
 
     @pytest.mark.asyncio
-    async def test_rebuild_missing_metadata(
-        self, tmp_outputs_dir: Path, mock_openwebui_client
-    ):
+    async def test_rebuild_missing_metadata(self, tmp_outputs_dir: Path, mock_openwebui_client):
         """Test rebuild when metadata file missing."""
         site_name = "test_wiki"
         current_manager = CurrentDirectoryManager(tmp_outputs_dir, site_name)
@@ -364,9 +359,7 @@ class TestRebuildFromRemote:
         assert "metadata not found" in error
 
     @pytest.mark.asyncio
-    async def test_rebuild_corrupted_metadata(
-        self, tmp_outputs_dir: Path, mock_openwebui_client
-    ):
+    async def test_rebuild_corrupted_metadata(self, tmp_outputs_dir: Path, mock_openwebui_client):
         """Test rebuild with corrupted metadata file."""
         site_name = "test_wiki"
         current_dir = tmp_outputs_dir / site_name / "current"
@@ -388,9 +381,7 @@ class TestRebuildFromRemote:
         assert "Failed to load metadata" in error
 
     @pytest.mark.asyncio
-    async def test_rebuild_api_failure(
-        self, tmp_outputs_dir: Path, mock_openwebui_client
-    ):
+    async def test_rebuild_api_failure(self, tmp_outputs_dir: Path, mock_openwebui_client):
         """Test rebuild when API call fails."""
         site_name = "test_wiki"
         current_dir = tmp_outputs_dir / site_name / "current"
@@ -417,9 +408,7 @@ class TestRebuildFromRemote:
         assert "confidence below" in error or "rebuild failed" in error
 
     @pytest.mark.asyncio
-    async def test_rebuild_low_confidence(
-        self, tmp_outputs_dir: Path, mock_openwebui_client
-    ):
+    async def test_rebuild_low_confidence(self, tmp_outputs_dir: Path, mock_openwebui_client):
         """Test rebuild with confidence below threshold."""
         site_name = "test_wiki"
         current_dir = tmp_outputs_dir / site_name / "current"
@@ -440,9 +429,7 @@ class TestRebuildFromRemote:
             "rebuild_confidence": "low",
             "rebuild_match_rate": 0.5,
         }
-        mock_openwebui_client._rebuild_state_inline = AsyncMock(
-            return_value=rebuilt_status
-        )
+        mock_openwebui_client._rebuild_state_inline = AsyncMock(return_value=rebuilt_status)
 
         state_mgr = StateManager(current_manager, mock_openwebui_client)
 
@@ -474,9 +461,7 @@ class TestValidateRebuildConfidence:
             "files_uploaded": 10,
         }
 
-        is_valid, message = state_mgr.validate_rebuild_confidence(
-            rebuilt_status, "high"
-        )
+        is_valid, message = state_mgr.validate_rebuild_confidence(rebuilt_status, "high")
 
         assert is_valid is True
         assert "meets threshold" in message
@@ -494,9 +479,7 @@ class TestValidateRebuildConfidence:
             "files_uploaded": 8,
         }
 
-        is_valid, message = state_mgr.validate_rebuild_confidence(
-            rebuilt_status, "medium"
-        )
+        is_valid, message = state_mgr.validate_rebuild_confidence(rebuilt_status, "medium")
 
         assert is_valid is True
 
@@ -520,18 +503,14 @@ class TestValidateRebuildConfidence:
         assert is_valid is False
         assert "below threshold" in message
 
-    def test_validate_confidence_missing_fields(
-        self, tmp_outputs_dir: Path, mock_openwebui_client
-    ):
+    def test_validate_confidence_missing_fields(self, tmp_outputs_dir: Path, mock_openwebui_client):
         """Test validation with missing confidence fields."""
         current_manager = CurrentDirectoryManager(tmp_outputs_dir, "test")
         state_mgr = StateManager(current_manager, mock_openwebui_client)
 
         rebuilt_status = {}  # Missing all fields
 
-        is_valid, message = state_mgr.validate_rebuild_confidence(
-            rebuilt_status, "medium"
-        )
+        is_valid, message = state_mgr.validate_rebuild_confidence(rebuilt_status, "medium")
 
         # Should handle gracefully (defaults to none/0.0/0)
         assert is_valid is False
@@ -551,10 +530,12 @@ class TestCheckHealth:
 
         local_metadata = _create_test_metadata(site_name, "2025-11-20_01-00-00", 3)
 
-        mock_openwebui_client.check_state_health = AsyncMock(return_value={
-            "status": "healthy",
-            "needs_rebuild": False,
-        })
+        mock_openwebui_client.check_state_health = AsyncMock(
+            return_value={
+                "status": "healthy",
+                "needs_rebuild": False,
+            }
+        )
 
         state_mgr = StateManager(current_manager, mock_openwebui_client)
 
@@ -568,9 +549,7 @@ class TestCheckHealth:
         assert health["needs_rebuild"] is False
 
     @pytest.mark.asyncio
-    async def test_check_health_loads_metadata(
-        self, tmp_outputs_dir: Path, mock_openwebui_client
-    ):
+    async def test_check_health_loads_metadata(self, tmp_outputs_dir: Path, mock_openwebui_client):
         """Test health check loads metadata automatically."""
         site_name = "test_wiki"
         current_dir = tmp_outputs_dir / site_name / "current"
@@ -581,11 +560,13 @@ class TestCheckHealth:
 
         current_manager = CurrentDirectoryManager(tmp_outputs_dir, site_name)
 
-        mock_openwebui_client.check_state_health = AsyncMock(return_value={
-            "status": "degraded",
-            "needs_rebuild": True,
-            "issues": ["Some files missing"],
-        })
+        mock_openwebui_client.check_state_health = AsyncMock(
+            return_value={
+                "status": "degraded",
+                "needs_rebuild": True,
+                "issues": ["Some files missing"],
+            }
+        )
 
         state_mgr = StateManager(current_manager, mock_openwebui_client)
 
@@ -663,9 +644,7 @@ class TestStateInfo:
 
         assert has_state is False
 
-    def test_has_upload_state_empty_files(
-        self, tmp_outputs_dir: Path, mock_openwebui_client
-    ):
+    def test_has_upload_state_empty_files(self, tmp_outputs_dir: Path, mock_openwebui_client):
         """Test has_upload_state with empty files list."""
         site_name = "test_wiki"
         current_dir = tmp_outputs_dir / site_name / "current"

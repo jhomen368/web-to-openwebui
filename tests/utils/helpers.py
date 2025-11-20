@@ -8,6 +8,7 @@ Provides helper functions for:
 - Mocking async functions
 - Working with paths and directories
 """
+
 import asyncio
 import hashlib
 import json
@@ -21,6 +22,7 @@ import yaml
 # ============================================================================
 # File and Directory Helpers
 # ============================================================================
+
 
 def create_test_file(
     directory: Path,
@@ -152,6 +154,7 @@ def count_files(directory: Path, pattern: str = "*") -> int:
 # Configuration Helpers
 # ============================================================================
 
+
 def create_temp_site_config(
     config_dir: Path,
     site_name: str,
@@ -236,6 +239,7 @@ def save_yaml_config(
 # Metadata and JSON Helpers
 # ============================================================================
 
+
 def create_test_metadata(
     filepath: Path,
     site_name: str,
@@ -256,13 +260,15 @@ def create_test_metadata(
     """
     files = []
     for i in range(num_files):
-        files.append({
-            "url": f"https://example.com/page{i}",
-            "filepath": f"content/page{i}.md",
-            "filename": f"page_{i}.md",
-            "checksum": f"hash{i:04d}",
-            "size": 1024 * (i + 1),
-        })
+        files.append(
+            {
+                "url": f"https://example.com/page{i}",
+                "filepath": f"content/page{i}.md",
+                "filename": f"page_{i}.md",
+                "checksum": f"hash{i:04d}",
+                "size": 1024 * (i + 1),
+            }
+        )
 
     metadata = {
         "site": {
@@ -329,6 +335,7 @@ def save_json_file(
 # ============================================================================
 # Scrape Directory Helpers
 # ============================================================================
+
 
 def create_test_scrape_directory(
     outputs_dir: Path,
@@ -433,6 +440,7 @@ def create_current_directory(
 # Async Mocking Helpers
 # ============================================================================
 
+
 def create_mock_async_function(return_value: Any = None) -> AsyncMock:
     """
     Create a mock async function.
@@ -486,6 +494,7 @@ def async_test_helper(coro: Coroutine) -> Any:
 # Comparison Helpers
 # ============================================================================
 
+
 def compare_dictionaries(
     dict1: dict[str, Any],
     dict2: dict[str, Any],
@@ -535,6 +544,7 @@ def compare_json_files(
 # List/Array Helpers
 # ============================================================================
 
+
 def generate_urls(
     base_url: str,
     num_urls: int = 10,
@@ -570,6 +580,7 @@ def generate_checksums(num_checksums: int = 10) -> list[str]:
 # ============================================================================
 # Validation Helpers
 # ============================================================================
+
 
 def validate_scrape_directory(scrape_dir: Path) -> bool:
     """

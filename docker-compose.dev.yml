@@ -8,7 +8,7 @@ services:
     container_name: openwebui-dev
     ports:
       - "3000:8080"
-    volumes:      
+    volumes:
       # Single mount for all persistent data
       - open-webui-data:/app/backend/data
     environment:
@@ -27,26 +27,26 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    pull_policy: never 
+    pull_policy: never
     container_name: webowui-dev
-    
+
     environment:
       # Point to local OpenWebUI instance
       - OPENWEBUI_BASE_URL=http://openwebui-dev:8080
       - OPENWEBUI_API_KEY=${OPENWEBUI_API_KEY}
       - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
       - TZ=${TZ:-America/Los_Angeles}
-    
+
     volumes:
       # Single mount for all persistent data
       - ./data:/app/data
-    
+
     depends_on:
       openwebui:
         condition: service_healthy
-    
+
     restart: unless-stopped
-    
+
     healthcheck:
       test: ["CMD", "python", "-m", "webowui", "health"]
       interval: 60s

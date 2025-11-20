@@ -7,6 +7,7 @@ Provides:
 - Mock OpenWebUI server setup
 - Test data generators
 """
+
 import json
 import os
 import tempfile
@@ -21,6 +22,7 @@ import yaml
 # ============================================================================
 # Temporary Directory Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def tmp_dir() -> Generator[Path, None, None]:
@@ -100,6 +102,7 @@ def tmp_outputs_dir(tmp_dir: Path) -> Path:
 # ============================================================================
 # Sample Configuration Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def sample_site_config() -> dict[str, Any]:
@@ -316,6 +319,7 @@ def sample_upload_status() -> dict[str, Any]:
 # Sample Content Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def sample_markdown() -> str:
     """
@@ -412,6 +416,7 @@ def sample_html() -> str:
 # Mock OpenWebUI Client Fixture
 # ============================================================================
 
+
 @pytest.fixture
 def mock_openwebui_client() -> AsyncMock:
     """
@@ -451,6 +456,7 @@ def mock_openwebui_client() -> AsyncMock:
 # Test Data Generators
 # ============================================================================
 
+
 @pytest.fixture
 def create_test_scrape_dir(tmp_outputs_dir: Path):
     """
@@ -465,6 +471,7 @@ def create_test_scrape_dir(tmp_outputs_dir: Path):
     Yields:
         Callable: Function to create test scrape directory
     """
+
     def _create(site_name: str, timestamp: str, num_files: int = 3) -> Path:
         """
         Create test scrape directory with content.
@@ -493,11 +500,13 @@ def create_test_scrape_dir(tmp_outputs_dir: Path):
             filename = f"page_{i}.md"
             filepath = content_dir / filename
             filepath.write_text(f"# Page {i}\n\nContent for page {i}")
-            metadata["files"].append({
-                "url": f"https://example.com/page{i}",
-                "filepath": f"content/{filename}",
-                "checksum": f"hash{i}",
-            })
+            metadata["files"].append(
+                {
+                    "url": f"https://example.com/page{i}",
+                    "filepath": f"content/{filename}",
+                    "checksum": f"hash{i}",
+                }
+            )
 
         # Write metadata
         metadata_file = scrape_dir / "metadata.json"
@@ -522,6 +531,7 @@ def create_test_site_config(tmp_config_dir: Path):
     Yields:
         Callable: Function to create test site config
     """
+
     def _create(site_name: str, config: dict[str, Any] | None = None) -> Path:
         """
         Create test site config YAML file.
@@ -556,6 +566,7 @@ def create_test_site_config(tmp_config_dir: Path):
 # Environment Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def mock_env() -> Generator[dict[str, str], None, None]:
     """
@@ -564,11 +575,14 @@ def mock_env() -> Generator[dict[str, str], None, None]:
     Yields:
         Dict: Environment variable overrides
     """
-    with patch.dict(os.environ, {
-        "OPENWEBUI_BASE_URL": "http://localhost:8000",
-        "OPENWEBUI_API_KEY": "test-key-123",
-        "LOG_LEVEL": "DEBUG",
-    }):
+    with patch.dict(
+        os.environ,
+        {
+            "OPENWEBUI_BASE_URL": "http://localhost:8000",
+            "OPENWEBUI_API_KEY": "test-key-123",
+            "LOG_LEVEL": "DEBUG",
+        },
+    ):
         yield os.environ
 
 
@@ -591,20 +605,11 @@ def mock_home_dir(tmp_dir: Path) -> Generator[Path, None, None]:
 # Markers for Test Organization
 # ============================================================================
 
+
 def pytest_configure(config):
     """Configure custom pytest markers."""
-    config.addinivalue_line(
-        "markers", "unit: mark test as a unit test"
-    )
-    config.addinivalue_line(
-        "markers", "integration: mark test as an integration test"
-    )
-    config.addinivalue_line(
-        "markers", "e2e: mark test as an end-to-end test"
-    )
-    config.addinivalue_line(
-        "markers", "requires_openwebui: mark test as requiring OpenWebUI"
-    )
-    config.addinivalue_line(
-        "markers", "slow: mark test as slow (>5 seconds)"
-    )
+    config.addinivalue_line("markers", "unit: mark test as a unit test")
+    config.addinivalue_line("markers", "integration: mark test as an integration test")
+    config.addinivalue_line("markers", "e2e: mark test as an end-to-end test")
+    config.addinivalue_line("markers", "requires_openwebui: mark test as requiring OpenWebUI")
+    config.addinivalue_line("markers", "slow: mark test as slow (>5 seconds)")
