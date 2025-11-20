@@ -140,7 +140,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Lint Dockerfile with hadolint
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: Dockerfile
           failure-threshold: error
