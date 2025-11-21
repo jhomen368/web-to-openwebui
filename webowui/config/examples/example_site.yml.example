@@ -133,31 +133,34 @@ crawling:
 # ----------------------------------------------------------------------------
 # CONTENT FILTERING (Stage 1: HTML)
 # ----------------------------------------------------------------------------
+# TWO-STAGE FILTERING MODEL
+# 
+# Stage 1: content_filtering (crawl4ai) - Generic HTML filtering
+#   - Applied during HTML → Markdown conversion
+#   - Removes HTML tags and structures
+# 
+# Stage 2: cleaning profiles - Site-specific markdown cleaning
+#   - Applied after markdown generation
+#   - Preserves content while removing noise
+#   - RECOMMENDED: Primary filtering for wikis
+#   - Safe, no data loss
+
 # Filter content before markdown conversion
 content_filtering:
-  # Enable aggressive HTML filtering
-  enabled: false
+  # Only enable for sites with heavy ads/scripts where data loss is acceptable
+  enabled: false  # Default: false (safe, no data loss)
 
-  # Content density threshold (0.0 - 1.0)
-  # Higher values = stricter filtering of low-content blocks
-  threshold: 0.6
-
-  # Skip blocks with fewer than N words
-  min_word_threshold: 50
-
-  # Remove specific HTML tags
-  excluded_tags:
-    - "nav"
-    - "footer"
-    - "aside"
-    - "script"
-    - "style"
-
-  # Exclude external links from content
-  exclude_external_links: false
-
-  # Exclude social media links
-  exclude_social_media: false
+  # Optional: Enable for non-wiki sites with aggressive ads
+  # threshold: 0.6           # Content density (0.0-1.0)
+  # min_word_threshold: 50   # Skip blocks with < N words
+  # excluded_tags:
+  #   - nav
+  #   - footer
+  #   - aside
+  #   - script
+  #   - style
+  # exclude_external_links: false
+  # exclude_social_media: false
 
 # ----------------------------------------------------------------------------
 # CONTENT EXTRACTION (Stage 2: Markdown)
@@ -228,16 +231,24 @@ cleaning:
   # Each profile has different options (see profile documentation)
   config:
     # MediaWiki profile options:
-    filter_dead_links: false                 # Remove links to non-existent pages
-    remove_citations: true                   # Remove citation markers [1], [ref]
-    remove_categories: true                  # Remove category listings
-    remove_infoboxes: true                   # Remove metadata tables at top
-    remove_external_links: true              # Remove "External Links" sections
-    remove_table_of_contents: true           # Remove auto-generated TOC
-    remove_version_history: true             # Remove version history tables
-    remove_wiki_meta: true                   # Remove wiki meta messages
-    remove_navigation_boilerplate: true      # Remove "Jump to" links
-    remove_template_links: true              # Remove [v], [t], [e] links
+    # Core Wiki Cleaning
+    remove_infoboxes: true
+    remove_table_of_contents: true
+    remove_external_links: true
+    remove_version_history: true
+    remove_wiki_meta: true
+    remove_navigation_boilerplate: true
+    remove_template_links: true
+    
+    # NEW: Additional Noise Removal
+    remove_media: true              # Gallery/Images/Videos sections
+    remove_references_section: true # References/Notes/Footnotes
+    remove_header_navigation: true  # Top navigation (Search, etc.)
+    
+    # Optional Filtering
+    remove_citations: true
+    remove_categories: true
+    filter_dead_links: false
 
 # ----------------------------------------------------------------------------
 # OPENWEBUI INTEGRATION

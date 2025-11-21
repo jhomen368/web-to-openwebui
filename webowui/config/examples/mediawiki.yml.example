@@ -107,29 +107,32 @@ crawling:
 # -----------------------------------------------------------------------------
 # Content Filtering (Stage 1: HTML)
 # -----------------------------------------------------------------------------
+# TWO-STAGE FILTERING MODEL
+#
+# Stage 1: content_filtering (crawl4ai) - Generic HTML filtering
+#   - Applied during HTML → Markdown conversion
+#   - Removes HTML tags and structures
+#
+# Stage 2: cleaning profiles - Site-specific markdown cleaning
+#   - Applied after markdown generation
+#   - Preserves content while removing noise
+#   - RECOMMENDED: Primary filtering for wikis
+
 content_filtering:
-  # Enable aggressive HTML filtering before markdown conversion
-  enabled: false
-
-  # Content density threshold (0.0 - 1.0)
-  threshold: 0.6
-
-  # Skip blocks with fewer than N words
-  min_word_threshold: 50
-
-  # Remove specific HTML tags
-  excluded_tags:
-    - "nav"
-    - "footer"
-    - "aside"
-    - "script"
-    - "style"
-
-  # Exclude external links from content
-  exclude_external_links: false
-
-  # Exclude social media links
-  exclude_social_media: false
+  # Only enable for sites with heavy ads/scripts where data loss is acceptable
+  enabled: false  # Default: false (safe, no data loss)
+  
+  # Optional: Enable for non-wiki sites with aggressive ads
+  # threshold: 0.6           # Content density (0.0-1.0)
+  # min_word_threshold: 50   # Skip blocks with < N words
+  # excluded_tags:
+  #   - nav
+  #   - footer
+  #   - aside
+  #   - script
+  #   - style
+  # exclude_external_links: false
+  # exclude_social_media: false
 
 # -----------------------------------------------------------------------------
 # Content Extraction (Stage 2: Markdown)
@@ -177,35 +180,24 @@ cleaning:
 
   # Profile-specific configuration
   config:
-    # Remove navigation elements (Jump to navigation/search links)
-    remove_navigation_boilerplate: true
-
-    # Remove wiki meta messages (work in progress banners, help text)
-    remove_wiki_meta: true
-
-    # Remove table of contents sections (auto-generated navigation)
-    remove_table_of_contents: true
-
-    # Remove infobox metadata tables (often at top of articles)
+    # Core Wiki Cleaning
     remove_infoboxes: true
-
-    # Remove "External Links" and "See also" sections
+    remove_table_of_contents: true
     remove_external_links: true
-
-    # Remove version history and changelog sections
     remove_version_history: true
-
-    # Remove template editing links ([v], [t], [e])
+    remove_wiki_meta: true
+    remove_navigation_boilerplate: true
     remove_template_links: true
-
-    # Remove citation markers and references
+    
+    # NEW: Additional Noise Removal
+    remove_media: true              # Gallery/Images/Videos sections
+    remove_references_section: true # References/Notes/Footnotes
+    remove_header_navigation: true  # Top navigation (Search, etc.)
+    
+    # Optional Filtering
     remove_citations: true
-
-    # Remove category listings
     remove_categories: true
-
-    # Remove links to non-existent pages (reduce noise)
-    filter_dead_links: true
+    filter_dead_links: false
 
 # -----------------------------------------------------------------------------
 # OpenWebUI Integration

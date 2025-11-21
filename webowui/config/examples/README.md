@@ -39,6 +39,22 @@ This directory contains example configuration templates for different types of w
    webowui scrape --site mysite
    ```
 
+## Two-Stage Filtering Model
+
+web-to-openwebui uses a two-stage approach to ensure clean, embedding-ready content:
+
+### Stage 1: HTML Pre-filtering (crawl4ai)
+**Config:** `content_filtering` section
+- Applied **before** markdown conversion
+- Removes HTML tags (nav, footer, scripts)
+
+### Stage 2: Markdown Cleaning (Profiles)
+**Config:** `cleaning` section
+- Applied **after** markdown generation
+- Uses site-specific profiles (MediaWiki, Fandom, etc.)
+- Removes boilerplate while preserving content
+- **Recommendation:** Use this as your primary cleaning method
+
 ## Available Templates
 
 ### `mediawiki.yml.example`

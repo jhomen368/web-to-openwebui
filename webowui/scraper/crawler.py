@@ -3,6 +3,7 @@ Main web crawler using crawl4ai.
 """
 
 import logging
+import math
 from datetime import datetime
 
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
@@ -180,6 +181,8 @@ class WikiCrawler:
 
         # Create instance
         max_pages = getattr(self.config, "max_pages", None)
+        if max_pages is None:
+            max_pages = math.inf
 
         if strategy_class == BestFirstCrawlingStrategy:
             crawl_keywords = getattr(self.config, "crawl_keywords", [])
