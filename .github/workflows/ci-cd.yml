@@ -151,6 +151,7 @@ jobs:
           platforms: linux/amd64
 
       - name: Security Scan - Upload to GitHub Security
+        if: github.event_name != 'pull_request'
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: web-to-openwebui:test
@@ -161,13 +162,14 @@ jobs:
 
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: always() && github.event_name != 'pull_request'
         continue-on-error: true
         with:
           sarif_file: 'trivy-results.sarif'
           category: trivy
 
       - name: Security Scan - Informational (non-blocking)
+        if: github.event_name != 'pull_request'
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: web-to-openwebui:test
@@ -208,6 +210,23 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
+      - name: Extract Release Notes
+        id: extract_notes
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+          # Try to extract content between "## [VERSION]" and the next "## ["
+          # The sed command finds the range, deletes the first line (header) and the last line (next header)
+          # If the version isn't found, the file will be empty
+          sed -n "/^## \[$VERSION\]/,/^## \[/p" CHANGELOG.md | sed '1d;$d' > release_notes.md
+          
+          # Check if release_notes.md is empty or only whitespace
+          if [ ! -s release_notes.md ] || ! grep -q "[^[:space:]]" release_notes.md; then
+            echo "No changelog entry found for v$VERSION. Using default notes."
+            echo "See commit history for detailed changes." > release_notes.md
+          else
+            echo "Successfully extracted release notes for v$VERSION"
+          fi
+
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -222,7 +241,10 @@ jobs:
           gh release create ${{ github.ref_name }} \
             $PRERELEASE_FLAG \
             --title "Release ${{ github.ref_name }}" \
-            --notes "## Docker Images
+            --notes-file release_notes.md \
+            --notes "
+          
+          ## Docker Images
           - \`ghcr.io/${{ github.repository }}:${{ github.ref_name }}\`
           - \`ghcr.io/${{ github.repository }}:latest\`
 
@@ -230,10 +252,8 @@ jobs:
           - linux/amd64
           - linux/arm64
 
-          ## What's Changed
-          See commit history for detailed changes.
-
           ## Pull the image
           \`\`\`bash
           docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}
           \`\`\`
+          "
