@@ -44,13 +44,13 @@ site:
 # CRAWLING STRATEGY
 # ----------------------------------------------------------------------------
 # Defines how the scraper explores and collects pages
-strategy:
+crawling:
   # REQUIRED: Strategy type
   # Options:
-  #   - "recursive": Follow all links matching patterns (most common)
-  #   - "selective": Only scrape explicit URLs, don't follow links
-  #   - "depth_limited": Strict depth enforcement with link following
-  type: "recursive"
+  #   - "bfs": Breadth-First Search (recommended for most sites)
+  #   - "dfs": Depth-First Search (explore deep branches first)
+  #   - "best_first": Prioritize pages based on keywords
+  strategy: "bfs"
 
   # REQUIRED: Maximum link depth from start URLs
   # depth=0: Only scrape start_urls (no link following)
@@ -61,59 +61,106 @@ strategy:
   # RECOMMENDATION: Start with depth=1 for testing, increase gradually
   max_depth: 2
 
-  # REQUIRED: Patterns for URLs to follow
-  # List of regular expressions (Python regex syntax)
-  # Only URLs matching these patterns will be scraped
-  # Use regex escaping: \. for literal dots, \/ for slashes
-  follow_patterns:
-    - "^https://example\\.com/wiki/.*"
-    - "^https://example\\.com/docs/.*"
+  # OPTIONAL: Limit total pages scraped
+  # Useful for testing or limiting scope on large sites
+  # max_pages: 100
 
-  # REQUIRED: Patterns for URLs to exclude
-  # List of regular expressions
-  # URLs matching these will NOT be scraped, even if they match follow_patterns
-  # Exclude patterns take priority over follow patterns
-  exclude_patterns:
-    # Common exclusions for most sites:
-    - ".*\\.(pdf|jpg|jpeg|png|gif|zip|tar|gz)$"  # Binary files
-    - ".*\\?action=edit.*"                        # Edit pages
-    - ".*\\?action=history.*"                     # History pages
-    - ".*#.*"                                     # Fragment identifiers
+  # OPTIONAL: Stream results as they are crawled
+  # true: Process pages as they are found (good for large crawls)
+  # false: Collect all pages then process (simpler, default)
+  streaming: false
 
-    # MediaWiki-specific (if applicable):
-    - ".*Special:.*"                              # Special pages
-    - ".*User:.*"                                 # User pages
-    - ".*User_talk:.*"                            # User talk pages
-    - ".*Talk:.*"                                 # Discussion pages
-    - ".*File:.*"                                 # File description pages
-    - ".*Template:.*"                             # Template pages
-    - ".*Template_talk:.*"                        # Template discussions
-    - ".*Category:.*"                             # Category pages
-    - ".*Help:.*"                                 # Help pages
-    - ".*MediaWiki:.*"                            # MediaWiki namespace
+  # OPTIONAL: Keywords for "best_first" strategy
+  # Pages matching these keywords get priority
+  # keywords:
+  #   - "documentation"
+  #   - "guide"
+
+  # URL Filters
+  filters:
+    # REQUIRED: Patterns for URLs to follow
+    # List of regular expressions (Python regex syntax)
+    # Only URLs matching these patterns will be scraped
+    # Use regex escaping: \. for literal dots, \/ for slashes
+    follow_patterns:
+      - "^https://example\\.com/wiki/.*"
+      - "^https://example\\.com/docs/.*"
+
+    # REQUIRED: Patterns for URLs to exclude
+    # List of regular expressions
+    # URLs matching these will NOT be scraped, even if they match follow_patterns
+    # Exclude patterns take priority over follow patterns
+    exclude_patterns:
+      # Common exclusions for most sites:
+      - ".*\\.(pdf|jpg|jpeg|png|gif|zip|tar|gz)$"  # Binary files
+      - ".*\\?action=edit.*"                        # Edit pages
+      - ".*\\?action=history.*"                     # History pages
+      - ".*#.*"                                     # Fragment identifiers
+
+      # MediaWiki-specific (if applicable):
+      - ".*Special:.*"                              # Special pages
+      - ".*User:.*"                                 # User pages
+      - ".*User_talk:.*"                            # User talk pages
+      - ".*Talk:.*"                                 # Discussion pages
+      - ".*File:.*"                                 # File description pages
+      - ".*Template:.*"                             # Template pages
+      - ".*Template_talk:.*"                        # Template discussions
+      - ".*Category:.*"                             # Category pages
+      - ".*Help:.*"                                 # Help pages
+      - ".*MediaWiki:.*"                            # MediaWiki namespace
+
+    # OPTIONAL: Block specific domains (if crawling external links)
+    exclude_domains: []
+
+  # ----------------------------------------------------------------------------
+  # RATE LIMITING
+  # ----------------------------------------------------------------------------
+  # Controls scraping speed to respect server resources
+  rate_limit:
+    # REQUIRED: Maximum requests per second
+    # Be respectful! Public sites should use 1-2 req/sec
+    # Self-hosted or approved aggressive scraping: 5-10 req/sec
+    requests_per_second: 2
+
+    # REQUIRED: Minimum delay between requests (seconds)
+    # Additional throttling on top of requests_per_second
+    # 0.5 seconds = 500ms between requests
+    delay_between_requests: 0.5
+
+    # OPTIONAL: Maximum retries for failed requests
+    max_retries: 3
 
 # ----------------------------------------------------------------------------
-# RATE LIMITING
+# CONTENT FILTERING (Stage 1: HTML)
 # ----------------------------------------------------------------------------
-# Controls scraping speed to respect server resources
-rate_limit:
-  # REQUIRED: Maximum requests per second
-  # Be respectful! Public sites should use 1-2 req/sec
-  # Self-hosted or approved aggressive scraping: 5-10 req/sec
-  requests_per_second: 2
+# Filter content before markdown conversion
+content_filtering:
+  # Enable aggressive HTML filtering
+  enabled: false
 
-  # REQUIRED: Minimum delay between requests (seconds)
-  # Additional throttling on top of requests_per_second
-  # 0.5 seconds = 500ms between requests
-  delay: 0.5
+  # Content density threshold (0.0 - 1.0)
+  # Higher values = stricter filtering of low-content blocks
+  threshold: 0.6
 
-  # OPTIONAL: Maximum concurrent requests
-  # Default: 1 (sequential scraping)
-  # Higher values = faster but more server load
-  # max_concurrent_requests: 1
+  # Skip blocks with fewer than N words
+  min_word_threshold: 50
+
+  # Remove specific HTML tags
+  excluded_tags:
+    - "nav"
+    - "footer"
+    - "aside"
+    - "script"
+    - "style"
+
+  # Exclude external links from content
+  exclude_external_links: false
+
+  # Exclude social media links
+  exclude_social_media: false
 
 # ----------------------------------------------------------------------------
-# CONTENT EXTRACTION
+# CONTENT EXTRACTION (Stage 2: Markdown)
 # ----------------------------------------------------------------------------
 # Defines how content is extracted from HTML pages
 extraction:

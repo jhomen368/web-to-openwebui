@@ -100,11 +100,12 @@ site:
   start_urls:
     - "https://example.com/docs/"
 
-strategy:
-  type: "recursive"
+crawling:
+  strategy: "bfs"
   max_depth: 3
-  follow_patterns:
-    - ".*/docs/.*"
+  filters:
+    follow_patterns:
+      - ".*/docs/.*"
 
 cleaning:
   profile: "none"
@@ -134,6 +135,60 @@ docker compose ps               # Check status
 ```
 
 Done! The container is running. It will automatically scrape and upload according to the schedule, or you can trigger them manually (see next section).
+
+---
+
+## Crawling Configuration
+
+web-to-openwebui uses crawl4ai for deep crawling with three built-in strategies:
+
+### Available Strategies
+
+**1. BFS (Breadth-First Search)** - Recommended for 90% of sites
+- Explores all pages at each depth level before going deeper
+- Comprehensive coverage, discovers everything systematically
+- Best for wikis, documentation sites, blogs
+
+```yaml
+crawling:
+  strategy: "bfs"        # breadth-first (default)
+  max_depth: 2           # how deep to crawl
+  max_pages: 100         # optional limit
+```
+
+**2. DFS (Depth-First Search)** - For hierarchical exploration
+- Follows one branch to its end before exploring others
+- Good for deeply nested content structures
+
+```yaml
+crawling:
+  strategy: "dfs"
+  max_depth: 3
+```
+
+**3. BestFirst** - Intelligent keyword-based prioritization
+- Crawls most relevant pages first based on keywords
+- Perfect for targeted research or large sites
+
+```yaml
+crawling:
+  strategy: "best_first"
+  max_depth: 3
+  max_pages: 50
+  keywords: ["machine learning", "tutorial"]
+  keyword_weight: 0.7
+```
+
+### Strategy Comparison
+
+| Use Case | Strategy | Max Depth | Notes |
+|----------|----------|-----------|-------|
+| Wiki scraping | `bfs` | 2-3 | Comprehensive coverage |
+| Documentation | `bfs` | 2 | Organized structure |
+| Large research site | `best_first` | 3 | With keywords |
+| Deep hierarchies | `dfs` | 3-4 | Follow branches |
+
+See [configuration examples](webowui/config/examples/) for complete templates.
 
 ---
 
@@ -407,7 +462,7 @@ Site configurations use YAML files in `data/config/sites/`.
 **Quick Reference:**
 - `site.name` - Unique identifier
 - `site.base_url` - Root URL
-- `strategy.type` - `recursive` or `selective`
+- `crawling.strategy` - `bfs`, `dfs`, or `best_first`
 - `cleaning.profile` - Cleaning profile to use
 - `openwebui.auto_upload` - Enable auto-upload
 

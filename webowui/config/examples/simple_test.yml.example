@@ -40,10 +40,10 @@ site:
 # ----------------------------------------------------------------------------
 # CRAWLING STRATEGY (Required)
 # ----------------------------------------------------------------------------
-strategy:
+crawling:
   # Strategy type - how the scraper follows links
-  # Options: "recursive" (follow matching links), "selective" (explicit URLs only)
-  type: "recursive"
+  # Options: "bfs" (breadth-first), "dfs" (depth-first), "best_first"
+  strategy: "bfs"
 
   # Maximum depth - how many link levels to follow from start URLs
   # depth=0: Only scrape start_urls
@@ -52,29 +52,29 @@ strategy:
   # Start with 1 for testing!
   max_depth: 1
 
-  # Follow patterns - regex patterns matching URLs to scrape
-  # Use regex escape: \. for literal dots
-  follow_patterns:
-    - "^https://example\\.com/.*"
+  # URL Filters
+  filters:
+    # Follow patterns - regex patterns matching URLs to scrape
+    # Use regex escape: \. for literal dots
+    follow_patterns:
+      - "^https://example\\.com/.*"
 
-  # Exclude patterns - URLs matching these will NOT be scraped
-  # Even if they match follow_patterns
-  exclude_patterns:
-    - ".*\\.pdf$"          # Skip PDF files
-    - ".*\\.jpg$"          # Skip images
-    - ".*\\?.*"            # Skip URLs with query parameters
+    # Exclude patterns - URLs matching these will NOT be scraped
+    # Even if they match follow_patterns
+    exclude_patterns:
+      - ".*\\.pdf$"          # Skip PDF files
+      - ".*\\.jpg$"          # Skip images
+      - ".*\\?.*"            # Skip URLs with query parameters
 
-# ----------------------------------------------------------------------------
-# RATE LIMITING (Required)
-# ----------------------------------------------------------------------------
-rate_limit:
-  # Requests per second - be respectful to the server!
-  # 1-2 req/sec is safe for most public sites
-  requests_per_second: 1
+  # Rate Limiting
+  rate_limit:
+    # Requests per second - be respectful to the server!
+    # 1-2 req/sec is safe for most public sites
+    requests_per_second: 1
 
-  # Delay between requests (in seconds)
-  # Additional throttling on top of requests_per_second
-  delay: 0.5
+    # Delay between requests (in seconds)
+    # Additional throttling on top of requests_per_second
+    delay_between_requests: 0.5
 
 # ----------------------------------------------------------------------------
 # CONTENT EXTRACTION (Optional - uses sensible defaults)

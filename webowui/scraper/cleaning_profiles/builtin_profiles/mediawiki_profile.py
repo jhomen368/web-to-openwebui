@@ -13,10 +13,13 @@ class MediaWikiProfile(BaseCleaningProfile):
 
     def clean(self, content: str, metadata: dict | None = None) -> str:
         """
-        Clean MediaWiki content by removing navigation, footers, and citations.
+        Clean MediaWiki content (Stage 2 of two-stage filtering).
+
+        Stage 1 (crawl4ai): Generic HTML filtering via content_filtering config
+        Stage 2 (this profile): MediaWiki-specific pattern removal
 
         Args:
-            content: Raw scraped content
+            content: Markdown content (already filtered by crawl4ai if enabled)
             metadata: Optional metadata (url, site_config, etc.)
 
         Returns:
@@ -321,6 +324,9 @@ class MediaWikiProfile(BaseCleaningProfile):
         """
         Extract only the main article content, removing navigation and footers.
 
+        Focuses on MediaWiki-specific patterns. Generic HTML elements
+        (nav, footer, ads) should be removed via content_filtering in config.
+
         Args:
             content: Full scraped content
             remove_citations: Whether to stop at citation markers
@@ -337,89 +343,31 @@ class MediaWikiProfile(BaseCleaningProfile):
 
         for i, line in enumerate(lines):
             if line.strip() == "---":
+                in_frontmatter = not in_frontmatter
                 if not in_frontmatter:
-                    in_frontmatter = True
-                else:
-                    in_frontmatter = False
                     content_start = i + 1
                 continue
 
         # Step 2: Build cleaned content line by line
         cleaned_lines = []
-        found_content_start = False
 
         for i in range(content_start, len(lines)):
             line = lines[i].strip()
 
-            # Footer markers - stop here (UPDATED with generic patterns)
-            footer_markers = [
-                "Retrieved from",
-                "[Category]",
-                "## Navigation",
-                "## Wiki tools",
-                "## Page tools",
-            ]
-
-            # Generic pattern for footer navigation tables
-            if re.match(r"_\[.*?\]\(", line):
-                break
-
+            # MediaWiki-specific footer markers
             if remove_categories and line.startswith("## Categories"):
                 break
 
             if remove_citations and (line.startswith("1. [↑]") or line.startswith("  1. [↑]")):
                 break
 
-            if any(line.startswith(marker) for marker in footer_markers):
-                break
-
-            if remove_categories and line.startswith("## Sources"):
-                break
-
-            # Skip navigation patterns (UPDATED with generic pattern)
+            # Wiki-specific patterns
             skip_patterns = [
-                r"You can view its source",
-                r"^\s*\*\s*\[(Read|View source|History|Discussion|Create account|Log in)\]",
-                r"^###\s*(Search|Namespaces|More|Page actions)",
-                r"^##\s*(Anonymous|Not logged in)",
-                r"From .* Wiki",  # Generic wiki attribution
-                r"^\*\s*More\s*$",
+                r"From .* Wiki$",
+                r"Retrieved from",
             ]
 
-            should_skip = False
-            for pattern in skip_patterns:
-                if re.search(pattern, line):
-                    should_skip = True
-                    break
-
-            if should_skip:
-                continue
-
-            # Find content start
-            if not found_content_start:
-                if not line:
-                    continue
-
-                # Skip short headings (likely navigation)
-                if line.startswith("#"):
-                    heading_text = re.sub(r"^#+\s*", "", line)
-                    if len(heading_text.split()) < 2 and "Contents" not in heading_text:
-                        continue
-
-                # Check if real content
-                clean_line = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", line)
-                clean_line = re.sub(r"\*\*([^\*]+)\*\*", r"\1", clean_line)
-                clean_line = re.sub(r"!\[.*?\]\(.*?\)", "", clean_line)
-
-                word_count = len(clean_line.split())
-
-                if (
-                    word_count >= 5
-                    or (line.startswith("|") and "---" not in line)
-                    or (line.startswith("  *"))
-                ):
-                    found_content_start = True
-                    cleaned_lines.append(lines[i])
+            if any(re.search(p, line) for p in skip_patterns):
                 continue
 
             # Add line to content (preserve original formatting)

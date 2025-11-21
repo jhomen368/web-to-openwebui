@@ -6,6 +6,37 @@ This directory contains content cleaning profiles that transform scraped content
 
 Cleaning profiles remove noise (navigation, footers, citations) from scraped content before it's uploaded to OpenWebUI. This ensures embeddings focus on actual content rather than boilerplate text.
 
+## Two-Stage Filtering Model
+
+Content now goes through two filtering stages:
+
+### Stage 1: Generic HTML Filtering (Optional)
+**When:** During HTML → Markdown conversion by crawl4ai
+**Configure:** `content_filtering` in site config
+**Handles:** Generic elements (nav, footer, ads, social media)
+
+```yaml
+content_filtering:
+  enabled: true
+  excluded_tags: [nav, footer, aside]
+  exclude_external_links: false
+  exclude_social_media: false
+```
+
+### Stage 2: Site-Type Specific Cleaning
+**When:** After markdown generation
+**Configure:** `cleaning` profile in site config
+**Handles:** Site-specific patterns (wiki markup, templates, etc.)
+
+```yaml
+cleaning:
+  profile: "mediawiki"
+  config:
+    remove_infoboxes: true
+```
+
+**Recommendation:** Enable Stage 1 filtering for best results. Profiles focus on site-specific patterns that crawl4ai can't detect.
+
 ## Available Built-in Profiles
 
 ### `none` (Default)

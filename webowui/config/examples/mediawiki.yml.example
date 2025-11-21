@@ -36,56 +36,67 @@ site:
 # -----------------------------------------------------------------------------
 # Crawling Strategy
 # -----------------------------------------------------------------------------
-strategy:
-  # Type: "recursive" (follow links), "selective" (specific patterns only),
-  #       "depth_limited" (strict depth control)
-  type: "recursive"
+crawling:
+  # Strategy: "bfs" (breadth-first, recommended), "dfs" (depth-first),
+  #           or "best_first" (keyword-based)
+  strategy: "bfs"
 
   # Maximum depth from start URLs (1 = only pages linked from start page)
   # Increase for comprehensive scraping, decrease for testing
   max_depth: 3
 
-  # URL patterns to follow (Python regex)
-  follow_patterns:
-    - "^https://example\\.com/wiki/.*"
+  # Optional: Limit total pages scraped
+  max_pages: null
 
-  # URL patterns to exclude (Python regex)
-  # These are standard MediaWiki pages you usually don't want
-  exclude_patterns:
-    - ".*Special:.*"        # Special pages (search, random, etc.)
-    - ".*User:.*"           # User pages and profiles
-    - ".*User_talk:.*"      # User discussion pages
-    - ".*Talk:.*"           # Article talk/discussion pages
-    - ".*File:.*"           # File description pages
-    - ".*Template:.*"       # Wiki templates
-    - ".*Category:.*"       # Category pages
-    - ".*Help:.*"           # Help pages
-    - ".*MediaWiki:.*"      # MediaWiki system pages
-    - ".*action=edit.*"     # Edit pages
-    - ".*action=history.*"  # History pages
-    - ".*oldid=.*"          # Old revisions
-    - ".*diff=.*"           # Difference pages
-    - ".*printable=.*"      # Print versions
+  # Optional: Stream results as they are crawled (vs batch at end)
+  streaming: false
 
-    # Wiki administrative/meta pages (about, policies, disclaimers)
-    - ".*[Ww]iki:[Aa]bout"                 # About/info pages
-    - ".*[Ww]iki:.*[Dd]isclaimer"          # Legal disclaimers
-    - ".*[Ww]iki:[Cc]opyrights?"           # Copyright info
-    - ".*[Ww]iki:[Pp]rivacy"               # Privacy policies
-    - ".*[Ww]iki:[Cc]ommunity"             # Community guidelines
+  # URL Filters
+  filters:
+    # URL patterns to follow (Python regex)
+    follow_patterns:
+      - "^https://example\\.com/wiki/.*"
 
-    # Edit/action pages and redirects
-    - ".*/edit(\\?.*)?$"                   # Edit interface pages
-    - ".*&action=(edit|history|delete|protect)"  # Action parameter pages
-    - ".*\\?redlink="                      # Redirect/non-existent pages
+    # URL patterns to exclude (Python regex)
+    # These are standard MediaWiki pages you usually don't want
+    exclude_patterns:
+      - ".*Special:.*"        # Special pages (search, random, etc.)
+      - ".*User:.*"           # User pages and profiles
+      - ".*User_talk:.*"      # User discussion pages
+      - ".*Talk:.*"           # Article talk/discussion pages
+      - ".*File:.*"           # File description pages
+      - ".*Template:.*"       # Wiki templates
+      - ".*Category:.*"       # Category pages
+      - ".*Help:.*"           # Help pages
+      - ".*MediaWiki:.*"      # MediaWiki system pages
+      - ".*action=edit.*"     # Edit pages
+      - ".*action=history.*"  # History pages
+      - ".*oldid=.*"          # Old revisions
+      - ".*diff=.*"           # Difference pages
+      - ".*printable=.*"      # Print versions
 
-    # Version history and changelog pages (optional - comment out if needed)
-    - ".*[Vv]ersion.*[Hh]istory"           # Version history pages
-    - ".*[Cc]hangelog"                     # Changelog pages
-    - ".*[Pp]atch.*[Nn]otes"               # Patch notes pages
+      # Wiki administrative/meta pages (about, policies, disclaimers)
+      - ".*[Ww]iki:[Aa]bout"                 # About/info pages
+      - ".*[Ww]iki:.*[Dd]isclaimer"          # Legal disclaimers
+      - ".*[Ww]iki:[Cc]opyrights?"           # Copyright info
+      - ".*[Ww]iki:[Pp]rivacy"               # Privacy policies
+      - ".*[Ww]iki:[Cc]ommunity"             # Community guidelines
 
-    # Image and file description pages
-    - ".*Image:.*"          # Image description pages
+      # Edit/action pages and redirects
+      - ".*/edit(\\?.*)?$"                   # Edit interface pages
+      - ".*&action=(edit|history|delete|protect)"  # Action parameter pages
+      - ".*\\?redlink="                      # Redirect/non-existent pages
+
+      # Version history and changelog pages (optional - comment out if needed)
+      - ".*[Vv]ersion.*[Hh]istory"           # Version history pages
+      - ".*[Cc]hangelog"                     # Changelog pages
+      - ".*[Pp]atch.*[Nn]otes"               # Patch notes pages
+
+      # Image and file description pages
+      - ".*Image:.*"          # Image description pages
+
+    # Block specific domains (if crawling external links)
+    exclude_domains: []
 
   # Rate limiting (be respectful to the server)
   rate_limit:
@@ -94,7 +105,34 @@ strategy:
     max_retries: 3               # Retry failed requests 3 times
 
 # -----------------------------------------------------------------------------
-# Content Extraction
+# Content Filtering (Stage 1: HTML)
+# -----------------------------------------------------------------------------
+content_filtering:
+  # Enable aggressive HTML filtering before markdown conversion
+  enabled: false
+
+  # Content density threshold (0.0 - 1.0)
+  threshold: 0.6
+
+  # Skip blocks with fewer than N words
+  min_word_threshold: 50
+
+  # Remove specific HTML tags
+  excluded_tags:
+    - "nav"
+    - "footer"
+    - "aside"
+    - "script"
+    - "style"
+
+  # Exclude external links from content
+  exclude_external_links: false
+
+  # Exclude social media links
+  exclude_social_media: false
+
+# -----------------------------------------------------------------------------
+# Content Extraction (Stage 2: Markdown)
 # -----------------------------------------------------------------------------
 extraction:
   # Main content selector (body gets everything, or use specific selector)

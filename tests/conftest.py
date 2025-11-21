@@ -225,6 +225,18 @@ def mock_site_config_obj(sample_site_config):
     config.requests_per_second = strategy["rate_limit"]["requests_per_second"]
     config.delay_between_requests = strategy["rate_limit"]["delay_between_requests"]
 
+    # New crawl4ai config fields
+    config.exclude_domains = []
+    config.crawl_keywords = []
+    config.crawl_keyword_weight = 0.7
+    config.use_streaming = False
+    config.excluded_tags = []
+    config.exclude_external_links = False
+    config.exclude_social_media = False
+    config.content_filter_enabled = False
+    config.content_filter_threshold = 0.6
+    config.content_filter_min_words = 50
+
     # Cleaning config
     config.min_content_length = 100
     config.max_content_length = 1000000
