@@ -357,4 +357,3 @@ ConfigMaps are read when the pod starts, not dynamically. After updating your Co
 ```bash
 kubectl rollout restart deployment/web-to-openwebui -n web-to-openwebui
 ```
-
