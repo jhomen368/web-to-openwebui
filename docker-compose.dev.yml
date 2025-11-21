@@ -1,5 +1,7 @@
 # Development Docker Compose for web-to-openwebui
 # Includes both scraper (local build) and OpenWebUI (for testing uploads)
+# To start only openwebui: docker compose -f docker-compose.dev.yml up -d openwebui
+# To start only webowui: docker compose -f docker-compose.dev.yml up -d webowui
 
 services:
   # OpenWebUI instance for testing uploads
