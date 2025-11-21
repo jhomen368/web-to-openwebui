@@ -142,53 +142,11 @@ Done! The container is running. It will automatically scrape and upload accordin
 
 web-to-openwebui uses crawl4ai for deep crawling with three built-in strategies:
 
-### Available Strategies
+- **BFS (Breadth-First Search)** - Recommended for 90% of sites. Explores all pages at each depth level before going deeper.
+- **DFS (Depth-First Search)** - For hierarchical exploration. Follows one branch to its end before exploring others.
+- **BestFirst** - Intelligent keyword-based prioritization. Crawls most relevant pages first based on keywords.
 
-**1. BFS (Breadth-First Search)** - Recommended for 90% of sites
-- Explores all pages at each depth level before going deeper
-- Comprehensive coverage, discovers everything systematically
-- Best for wikis, documentation sites, blogs
-
-```yaml
-crawling:
-  strategy: "bfs"        # breadth-first (default)
-  max_depth: 2           # how deep to crawl
-  max_pages: 100         # optional limit
-```
-
-**2. DFS (Depth-First Search)** - For hierarchical exploration
-- Follows one branch to its end before exploring others
-- Good for deeply nested content structures
-
-```yaml
-crawling:
-  strategy: "dfs"
-  max_depth: 3
-```
-
-**3. BestFirst** - Intelligent keyword-based prioritization
-- Crawls most relevant pages first based on keywords
-- Perfect for targeted research or large sites
-
-```yaml
-crawling:
-  strategy: "best_first"
-  max_depth: 3
-  max_pages: 50
-  keywords: ["machine learning", "tutorial"]
-  keyword_weight: 0.7
-```
-
-### Strategy Comparison
-
-| Use Case | Strategy | Max Depth | Notes |
-|----------|----------|-----------|-------|
-| Wiki scraping | `bfs` | 2-3 | Comprehensive coverage |
-| Documentation | `bfs` | 2 | Organized structure |
-| Large research site | `best_first` | 3 | With keywords |
-| Deep hierarchies | `dfs` | 3-4 | Follow branches |
-
-See [configuration examples](webowui/config/examples/) for complete templates.
+👉 **Full Configuration Guide:** [`webowui/config/examples/README.md`](webowui/config/examples/README.md)
 
 ---
 
@@ -358,7 +316,7 @@ webowui rebuild-current --site <name>    # Rebuild current/ from latest scrape
 webowui rebuild-state --site <name>      # Rebuild upload_status.json from OpenWebUI
 webowui sync --site <name>               # Reconcile local vs remote state
 webowui sync --site <name> --fix         # Auto-fix discrepancies
-webowui verify-current --site <name>     # Verify current/ directory integrity
+webowui show-current --site <name>       # Show current directory status
 ```
 
 ### Backup & Retention
@@ -368,6 +326,7 @@ webowui cleanup --site <name>            # Clean up old backups
 webowui cleanup --site <name> --dry-run  # Preview what would be deleted
 webowui rollback --site <name>           # Rollback to most recent backup
 webowui rollback --site <name> --list    # List available backups
+webowui reclean --site <name>            # Re-clean scraped content
 ```
 
 **For complete details:**

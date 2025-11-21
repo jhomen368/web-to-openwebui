@@ -233,6 +233,8 @@ data:
         delay_minutes: 15
 ```
 
+👉 **For full configuration options, see:** [`webowui/config/examples/README.md`](../webowui/config/examples/README.md)
+
 ### 5. Deployment
 
 Runs the webowui daemon.

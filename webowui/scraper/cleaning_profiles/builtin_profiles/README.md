@@ -340,7 +340,7 @@ cleaning:
 Add to your site's YAML file:
 
 ```yaml
-cleaning:
+markdown_cleaning:
   # Profile name (must match *_profile.py filename without "_profile")
   profile: "mediawiki"
 
@@ -350,7 +350,7 @@ cleaning:
     remove_citations: true
 ```
 
-If no `cleaning` section exists, defaults to `"none"` profile (no cleaning).
+If no `markdown_cleaning` section exists, defaults to `"none"` profile (no cleaning).
 
 ## Tips for Writing Profiles
 

@@ -49,7 +49,7 @@ web-to-openwebui uses a two-stage approach to ensure clean, embedding-ready cont
 - Removes HTML tags (nav, footer, scripts)
 
 ### Stage 2: Markdown Cleaning (Profiles)
-**Config:** `cleaning` section
+**Config:** `markdown_cleaning` section
 - Applied **after** markdown generation
 - Uses site-specific profiles (MediaWiki, Fandom, etc.)
 - Removes boilerplate while preserving content
@@ -287,7 +287,7 @@ follow_patterns: ["^https://en\\.wikipedia\\.org/wiki/.*"]
 ```yaml
 base_url: "https://yourwiki.fandom.com"
 follow_patterns: ["^https://yourwiki\\.fandom\\.com/wiki/.*"]
-cleaning:
+markdown_cleaning:
   profile: "fandomwiki"  # Fandom-specific cleaning
 ```
 
@@ -316,7 +316,7 @@ exclude_patterns:
 
 ### 1. Start Small
 ```yaml
-strategy:
+crawling:
   max_depth: 1  # Only follow links from start page
 ```
 
@@ -338,7 +338,7 @@ webowui show-current --site mysite
 
 ### 5. Increase Depth
 ```yaml
-strategy:
+crawling:
   max_depth: 3  # Once patterns work, increase depth
 ```
 
@@ -385,7 +385,7 @@ exclude_patterns:
 
 **Solution:**
 ```yaml
-cleaning:
+markdown_cleaning:
   profile: "mediawiki"
   config:
     remove_infoboxes: true       # Enable all cleaners

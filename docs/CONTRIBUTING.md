@@ -289,17 +289,19 @@ The `WikiCrawler` class:
 
 ### Content Filtering (Two-Stage)
 
-**Stage 1 (crawl4ai - Optional):**
-- Configured via `content_filtering` in site config
-- Removes generic HTML elements (nav, footer, ads)
-- Applied during HTML → Markdown conversion
+**Stage 1: HTML Filtering (`html_filtering`)**
+- **When:** Before markdown conversion
+- **Config:** `html_filtering` section
+- **Purpose:** Remove generic HTML elements (nav, footer, ads)
+- **Capabilities:** Tag removal, external link filtering, block pruning
 
-**Stage 2 (Cleaning Profiles - Required):**
-- Configured via `cleaning` in site config
-- Site-specific pattern removal (wiki markup, templates, etc.)
-- Applied after markdown generation
+**Stage 2: Markdown Cleaning (`markdown_cleaning`)**
+- **When:** After markdown generation
+- **Config:** `markdown_cleaning` section
+- **Purpose:** Site-specific pattern removal (wiki markup, templates)
+- **Capabilities:** Regex cleaning, structure manipulation via profiles
 
-Example MediaWiki uses both stages for optimal content quality.
+For detailed documentation on the filtering pipeline and available profiles, see the [Cleaning Profiles Reference](../webowui/scraper/cleaning_profiles/builtin_profiles/README.md).
 
 **[`webowui/storage/output_manager.py`](../webowui/storage/output_manager.py)** - File management
 - Saves scraped content to timestamped directories
@@ -370,7 +372,7 @@ class MySiteProfile(BaseCleaningProfile):
 3. **Reference in your site config**:
 ```yaml
 # config/sites/mysite.yaml
-cleaning:
+markdown_cleaning:
   profile: "mysite"
   config:
     remove_ads: true
@@ -386,6 +388,27 @@ cleaning:
 2. Use `@click.command()` decorator
 3. Add tests to [`tests/unit/test_cli.py`](../tests/unit/)
 4. Update README.md with examples
+
+**Current CLI Commands:**
+- `check-state` - Check health of local upload state
+- `clean` - Remove old scrapes
+- `daemon` - Run scheduler daemon
+- `diff` - Compare two scrapes
+- `health` - Enhanced healthcheck
+- `list` - List all scrapes
+- `rebuild-current` - Rebuild current/ directory
+- `rebuild-state` - Rebuild state from OpenWebUI
+- `reclean` - Re-clean scraped content
+- `rollback` - Rollback to previous backup
+- `schedules` - List configured schedules
+- `scrape` - Scrape web content
+- `show-current` - Show current directory status
+- `sites` - List configured sites
+- `sync` - Reconcile local/remote state
+- `upload` - Upload content to OpenWebUI
+- `validate` - Validate configuration
+
+> **Note:** Run `python -m webowui --help` for the most up-to-date list of commands and options.
 
 **To add new scraping capability:**
 1. Modify [`webowui/scraper/crawler.py`](../webowui/scraper/crawler.py)
