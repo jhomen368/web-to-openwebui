@@ -26,10 +26,6 @@ You may see vulnerabilities reported in system packages. These are:
 
 If you discover a security vulnerability in this project, please report it privately.
 
-**Do not open a public issue.**
-
-Instead, please email [your-email@example.com] or open a GitHub Security Advisory draft if you have permissions.
-
 ## Supported Versions
 
 | Version | Supported          |
