@@ -93,34 +93,46 @@ class SiteConfig:
         self.delay_between_requests = rate_limit.get("delay_between_requests", 0.5)
         self.max_retries = rate_limit.get("max_retries", 3)
 
-        # Content filtering (Stage 1) - NEW
-        content_filtering = config_dict.get("content_filtering", {})
-        self.content_filter_enabled = content_filtering.get("enabled", False)
-        self.content_filter_threshold = content_filtering.get("threshold", 0.6)
-        self.content_filter_min_words = content_filtering.get("min_word_threshold", 50)
-        self.excluded_tags = content_filtering.get("excluded_tags", [])
-        self.exclude_external_links = content_filtering.get("exclude_external_links", False)
-        self.exclude_social_media = content_filtering.get("exclude_social_media", False)
+        # ---------------------------------------------------------------------
+        # PIPELINE STAGE 1: HTML Filtering
+        # ---------------------------------------------------------------------
+        html_filtering = config_dict.get("html_filtering", {})
 
-        # Extraction
-        extraction = config_dict.get("extraction", {})
-        self.content_selector = extraction.get("content_selector", "body")
-        self.remove_selectors = extraction.get("remove_selectors", [])
-        self.markdown_options = extraction.get("markdown_options", {})
+        # Pruning filter (heuristic)
+        pruning = html_filtering.get("pruning", {})
+        self.pruning_enabled = pruning.get("enabled", False)
+        self.pruning_threshold = pruning.get("threshold", 0.6)
+        self.pruning_min_words = pruning.get("min_word_threshold", 50)
 
-        # Filters
-        filters = config_dict.get("filters", {})
-        # Handle filters that might be in crawling.filters (new) or root filters (old/mixed)
-        # We keep these here as they are post-processing filters, not crawl filters
-        self.min_content_length = filters.get("min_content_length", 100)
-        self.max_content_length = filters.get("max_content_length", 500000)
-        self.allowed_content_types = filters.get("allowed_content_types", ["text/html"])
-        self.filter_dead_links = filters.get("filter_dead_links", False)
+        # Basic HTML filtering (explicit)
+        self.excluded_tags = html_filtering.get("excluded_tags", [])
+        self.exclude_external_links = html_filtering.get("exclude_external_links", False)
+        self.exclude_social_media = html_filtering.get("exclude_social_media", False)
+        self.min_block_words = html_filtering.get("min_block_words", 10)
 
-        # Cleaning profiles (NEW)
-        cleaning_config = config_dict.get("cleaning", {})
-        self.cleaning_profile_name = cleaning_config.get("profile", "none")
-        self.cleaning_profile_config = cleaning_config.get("config", {})
+        # ---------------------------------------------------------------------
+        # PIPELINE STAGE 2a: Markdown Conversion
+        # ---------------------------------------------------------------------
+        markdown_conversion = config_dict.get("markdown_conversion", {})
+        self.content_selector = markdown_conversion.get("content_selector", "body")
+        self.remove_selectors = markdown_conversion.get("remove_selectors", [])
+        self.markdown_options = markdown_conversion.get("markdown_options", {})
+
+        # ---------------------------------------------------------------------
+        # PIPELINE STAGE 2b: Markdown Cleaning
+        # ---------------------------------------------------------------------
+        markdown_cleaning = config_dict.get("markdown_cleaning", {})
+        self.cleaning_profile_name = markdown_cleaning.get("profile", "none")
+        self.cleaning_profile_config = markdown_cleaning.get("config", {})
+
+        # ---------------------------------------------------------------------
+        # PIPELINE STAGE 3: Result Filtering
+        # ---------------------------------------------------------------------
+        result_filtering = config_dict.get("result_filtering", {})
+        self.min_page_length = result_filtering.get("min_page_length", 100)
+        self.max_page_length = result_filtering.get("max_page_length", 500000)
+        self.allowed_content_types = result_filtering.get("allowed_content_types", ["text/html"])
+        self.filter_dead_links = result_filtering.get("filter_dead_links", False)
 
         # Open Web UI
         openwebui = config_dict.get("openwebui", {})
@@ -205,7 +217,6 @@ class SiteConfig:
                     continue
 
             if sharing_sites:
-                # This is good news - sites can safely share knowledge bases now!
                 errors.append(
                     f"📁 SHARED KNOWLEDGE INFO:\n"
                     f"   Knowledge base '{self.knowledge_id}' is shared with: {', '.join(sharing_sites)}\n"

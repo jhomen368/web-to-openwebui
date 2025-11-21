@@ -59,8 +59,8 @@ class TestSiteConfigBasics:
         assert config.max_depth == 3
         assert config.requests_per_second == 2
         assert config.delay_between_requests == 0.5
-        assert config.min_content_length == 100
-        assert config.max_content_length == 500000
+        assert config.min_page_length == 100
+        assert config.max_page_length == 500000
         assert config.cleaning_profile_name == "none"
 
     def test_site_config_strategy_settings(self, tmp_config_dir: Path):
@@ -118,9 +118,9 @@ class TestSiteConfigBasics:
             "display_name": "Test",
             "base_url": "https://example.com",
             "start_urls": ["https://example.com"],
-            "filters": {
-                "min_content_length": 500,
-                "max_content_length": 250000,
+            "result_filtering": {
+                "min_page_length": 500,
+                "max_page_length": 250000,
                 "filter_dead_links": True,
             },
         }
@@ -128,8 +128,8 @@ class TestSiteConfigBasics:
 
         config = SiteConfig(config_dict, config_file)
 
-        assert config.min_content_length == 500
-        assert config.max_content_length == 250000
+        assert config.min_page_length == 500
+        assert config.max_page_length == 250000
         assert config.filter_dead_links is True
 
     def test_site_config_cleaning_profile(self, tmp_config_dir: Path):
@@ -139,7 +139,7 @@ class TestSiteConfigBasics:
             "display_name": "Test",
             "base_url": "https://example.com",
             "start_urls": ["https://example.com"],
-            "cleaning": {
+            "markdown_cleaning": {
                 "profile": "mediawiki",
                 "config": {
                     "remove_infoboxes": True,

@@ -194,7 +194,7 @@ def test_create_deep_crawl_strategy_legacy_mapping(mock_site_config_obj):
 def test_create_crawler_config(mock_site_config_obj):
     """Test CrawlerRunConfig creation."""
     mock_site_config_obj.use_streaming = True
-    mock_site_config_obj.min_content_length = 100
+    mock_site_config_obj.min_block_words = 100
 
     crawler = WikiCrawler(mock_site_config_obj)
     strategy = MagicMock()
@@ -209,8 +209,8 @@ def test_create_crawler_config(mock_site_config_obj):
 @pytest.mark.unit
 def test_create_markdown_generator(mock_site_config_obj):
     """Test markdown generator creation."""
-    mock_site_config_obj.content_filter_enabled = True
-    mock_site_config_obj.content_filter_threshold = 0.8
+    mock_site_config_obj.pruning_enabled = True
+    mock_site_config_obj.pruning_threshold = 0.8
 
     crawler = WikiCrawler(mock_site_config_obj)
     generator = crawler._create_markdown_generator()
@@ -222,6 +222,9 @@ def test_create_markdown_generator(mock_site_config_obj):
 @pytest.mark.unit
 def test_convert_result(mock_site_config_obj):
     """Test converting crawl4ai result to CrawlResult."""
+    mock_site_config_obj.min_page_length = 0  # Ensure min_page_length is an int
+    mock_site_config_obj.max_page_length = 500000
+
     crawler = WikiCrawler(mock_site_config_obj)
 
     # Mock crawl4ai result
@@ -248,6 +251,8 @@ async def test_crawler_crawl_success(mock_site_config_obj):
     """Test successful crawl."""
     mock_site_config_obj.start_urls = ["https://test.com/page"]
     mock_site_config_obj.crawl_strategy = "bfs"
+    mock_site_config_obj.min_page_length = 0
+    mock_site_config_obj.max_page_length = 500000
 
     crawler = WikiCrawler(mock_site_config_obj)
 
@@ -282,6 +287,8 @@ async def test_crawler_crawl_streaming(mock_site_config_obj):
     mock_site_config_obj.start_urls = ["https://test.com/page"]
     mock_site_config_obj.crawl_strategy = "bfs"
     mock_site_config_obj.use_streaming = True
+    mock_site_config_obj.min_page_length = 0
+    mock_site_config_obj.max_page_length = 500000
 
     crawler = WikiCrawler(mock_site_config_obj)
 
@@ -316,6 +323,8 @@ async def test_crawler_crawl_streaming(mock_site_config_obj):
 async def test_crawler_crawl_failure(mock_site_config_obj):
     """Test failed crawl."""
     mock_site_config_obj.start_urls = ["https://test.com/fail"]
+    mock_site_config_obj.min_page_length = 0
+    mock_site_config_obj.max_page_length = 500000
     crawler = WikiCrawler(mock_site_config_obj)
 
     with patch("webowui.scraper.crawler.AsyncWebCrawler") as mock_crawler_cls:
@@ -345,6 +354,8 @@ async def test_crawler_crawl_depth_limit(mock_site_config_obj):
     mock_site_config_obj.max_depth = 1
     # Allow crawling test domain
     mock_site_config_obj.follow_patterns = ["^https://test\\.com/.*"]
+    mock_site_config_obj.min_page_length = 0
+    mock_site_config_obj.max_page_length = 500000
 
     crawler = WikiCrawler(mock_site_config_obj)
 

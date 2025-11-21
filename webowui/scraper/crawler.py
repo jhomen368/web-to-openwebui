@@ -135,27 +135,7 @@ class WikiCrawler:
         if self.config.exclude_patterns:
             # Note: URLPatternFilter doesn't support exclude patterns directly in the same way
             # as our old strategy, but we can use it for positive matching.
-            # For exclusion, crawl4ai usually handles it via excluded_tags or other mechanisms,
-            # but deep crawling strategies might need custom filters if we want to exclude URLs.
-            # However, the plan says:
-            # if self.config.exclude_patterns or self.config.exclude_domains:
-            #    blocked = self.config.exclude_domains or []
-            #    filters.append(DomainFilter(blocked_domains=blocked))
-            # It seems the plan assumes DomainFilter handles domains.
-            # For regex exclusion, we might need to rely on crawl4ai's internal exclusion or
-            # implement a custom filter if needed. For now, I'll follow the plan's suggestion
-            # regarding DomainFilter, but I'll also check if I can use URLPatternFilter for exclusion.
-            # Looking at crawl4ai docs (simulated), URLPatternFilter is usually for inclusion.
-            # Let's stick to the plan's implementation for now.
             pass
-
-        # The plan implementation:
-        # if self.config.exclude_patterns or self.config.exclude_domains:
-        #     blocked = self.config.exclude_domains or []
-        #     filters.append(DomainFilter(blocked_domains=blocked))
-        #
-        # Wait, SiteConfig doesn't have exclude_domains yet (Phase 2).
-        # I should use getattr for new config fields.
 
         exclude_domains = getattr(self.config, "exclude_domains", [])
         if exclude_domains:
@@ -164,9 +144,6 @@ class WikiCrawler:
         filter_chain = FilterChain(filters) if filters else None
 
         # Map strategy type
-        # Old types: recursive, selective, depth_limited
-        # New types: bfs, dfs, best_first
-        # Mapping old to new for compatibility
         strategy_type = self.config.crawl_strategy
         if strategy_type in ["recursive", "selective", "depth_limited"]:
             strategy_type = "bfs"  # Default to BFS for old types
@@ -210,6 +187,12 @@ class WikiCrawler:
         # Get new config fields with defaults
         use_streaming = getattr(self.config, "use_streaming", False)
         excluded_tags = getattr(self.config, "excluded_tags", [])
+        # Ensure excluded_tags is a list of strings
+        if excluded_tags is None:
+            excluded_tags = []
+        elif isinstance(excluded_tags, str):
+            excluded_tags = [excluded_tags]
+
         exclude_external_links = getattr(self.config, "exclude_external_links", False)
         exclude_social_media = getattr(self.config, "exclude_social_media", False)
 
@@ -220,7 +203,7 @@ class WikiCrawler:
             excluded_tags=excluded_tags,
             exclude_external_links=exclude_external_links,
             exclude_social_media_links=exclude_social_media,
-            word_count_threshold=self.config.min_content_length,
+            word_count_threshold=getattr(self.config, "min_block_words", 10),
             # Markdown generation
             markdown_generator=self._create_markdown_generator(),
             cache_mode=CacheMode.BYPASS,
@@ -231,14 +214,14 @@ class WikiCrawler:
         """Create markdown generator with optional content filter."""
         from crawl4ai.content_filter_strategy import PruningContentFilter
 
-        content_filter_enabled = getattr(self.config, "content_filter_enabled", False)
-        content_filter_threshold = getattr(self.config, "content_filter_threshold", 0.6)
-        content_filter_min_words = getattr(self.config, "content_filter_min_words", 50)
+        pruning_enabled = getattr(self.config, "pruning_enabled", False)
+        pruning_threshold = getattr(self.config, "pruning_threshold", 0.6)
+        pruning_min_words = getattr(self.config, "pruning_min_words", 50)
 
         content_filter = None
-        if content_filter_enabled:
+        if pruning_enabled:
             content_filter = PruningContentFilter(
-                threshold=content_filter_threshold, min_word_threshold=content_filter_min_words
+                threshold=pruning_threshold, min_word_threshold=pruning_min_words
             )
 
         return DefaultMarkdownGenerator(
@@ -255,6 +238,28 @@ class WikiCrawler:
             if crawl4ai_result.markdown and crawl4ai_result.markdown.fit_markdown
             else (crawl4ai_result.markdown.raw_markdown if crawl4ai_result.markdown else "")
         )
+
+        # Apply page length filter
+        min_length = getattr(self.config, "min_page_length", 100)
+        max_length = getattr(self.config, "max_page_length", 500000)
+
+        if len(markdown) < min_length:
+            return CrawlResult(
+                url=crawl4ai_result.url,
+                success=False,
+                error=f"Content too short ({len(markdown)} chars < {min_length})",
+                markdown="",
+                links=[],
+            )
+
+        if len(markdown) > max_length:
+            return CrawlResult(
+                url=crawl4ai_result.url,
+                success=False,
+                error=f"Content too long ({len(markdown)} chars > {max_length})",
+                markdown="",
+                links=[],
+            )
 
         return CrawlResult(
             url=crawl4ai_result.url,
@@ -278,15 +283,6 @@ class WikiCrawler:
                     extracted.append(href)
             elif isinstance(link, str):
                 extracted.append(link)
-
-        # Process external links (if we decide to include them later, for now just internal)
-        # The old strategy logic handled filtering, but here we just extract what crawl4ai found.
-        # Deep crawling strategy handles what to follow.
-        # We might want to store external links too if needed for analysis, but for now let's stick to internal
-        # or just extract everything and let the strategy decide?
-        # Actually, CrawlResult.links is used for reporting and potentially for next steps if we were doing manual crawling.
-        # With deep crawling, crawl4ai handles the queue.
-        # So this is mostly for metadata.
 
         return extracted
 

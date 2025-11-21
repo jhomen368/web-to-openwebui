@@ -55,6 +55,25 @@ web-to-openwebui uses a two-stage approach to ensure clean, embedding-ready cont
 - Removes boilerplate while preserving content
 - **Recommendation:** Use this as your primary cleaning method
 
+## Content Processing Pipeline
+
+web-to-openwebui uses a multi-stage pipeline to ensure clean, embedding-ready content:
+
+### Stage 1: HTML Filtering (`html_filtering`)
+- **Applied:** Before markdown conversion
+- **Purpose:** Remove HTML tags, links, and low-density blocks
+- **Key Options:** `excluded_tags`, `min_block_words`, `pruning.enabled`
+
+### Stage 2: Markdown Processing
+- **2a: Conversion (`markdown_conversion`)**: Controls HTML → Markdown (selectors, options)
+- **2b: Cleaning (`markdown_cleaning`)**: Applies site-specific profiles (MediaWiki, Fandom)
+- **Recommendation:** Use profiles as your primary cleaning method
+
+### Stage 3: Result Filtering (`result_filtering`)
+- **Applied:** Final check on generated markdown
+- **Purpose:** Filter out stubs, redirects, or oversized pages
+- **Key Options:** `min_page_length`, `max_page_length`
+
 ## Available Templates
 
 ### `mediawiki.yml.example`
@@ -80,8 +99,60 @@ site:
   base_url: "https://example.com"
   start_urls: ["https://example.com/wiki/Main_Page"]
 
-strategy:
-  follow_patterns: ["^https://example\\.com/wiki/.*"]
+crawling:
+  strategy: "bfs"
+  filters:
+    follow_patterns: ["^https://example\\.com/wiki/.*"]
+```
+
+### `fandomwiki.yml.example`
+**Purpose:** Optimized template for Fandom-hosted wikis
+
+**Best For:**
+- Any wiki hosted on fandom.com (formerly Wikia)
+- Gaming wikis (Escape from Tarkov, Fallout, etc.)
+- TV/Movie wikis (Star Wars, Marvel, etc.)
+
+**Features:**
+- Extends MediaWiki cleaning with Fandom-specific logic
+- Removes ads, "More Fandom" bars, and community feeds
+- Handles Fandom's unique HTML structure
+- Tested with Escape from Tarkov Wiki
+
+**Quick Config:**
+```yaml
+site:
+  name: "myfandom"
+  base_url: "https://yourwiki.fandom.com"
+  start_urls: ["https://yourwiki.fandom.com/wiki/Main_Page"]
+
+markdown_cleaning:
+  profile: "fandomwiki"
+```
+
+### `maxroll.yml.example`
+**Purpose:** Template for Maxroll.gg gaming guides
+
+**Best For:**
+- Maxroll build guides
+- Maxroll resource pages
+- Structured gaming guides
+
+**Features:**
+- Preserves guide structure while removing noise
+- Removes navigation, social bars, and comments
+- Optimized for "bfs" or "selective" crawling
+- Tested with Path of Exile 2 Guides
+
+**Quick Config:**
+```yaml
+site:
+  name: "myguide"
+  base_url: "https://maxroll.gg"
+  start_urls: ["https://maxroll.gg/poe2/category/guides"]
+
+markdown_cleaning:
+  profile: "maxroll"
 ```
 
 ### `simple_test.yml.example`
@@ -182,9 +253,9 @@ extraction:
   remove_selectors: [...]
 
 # 4. Content Cleaning
-cleaning:
+markdown_cleaning:
   profile: "mediawiki"
-  config: {...}
+  config: {}
 
 # 5. OpenWebUI Integration
 openwebui:
