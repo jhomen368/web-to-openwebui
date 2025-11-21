@@ -273,7 +273,11 @@ spec:
             - name: data
               mountPath: /app/data
             - name: config
-              mountPath: /app/data/config/sites
+              mountPath: /app/data/config/sites/monsterhunter.yaml
+              subPath: monsterhunter.yaml
+            - name: config
+              mountPath: /app/data/config/sites/poe2wiki.yaml
+              subPath: poe2wiki.yaml
           resources:
             requests:
               memory: "512Mi"
@@ -301,10 +305,56 @@ spec:
 | `LOG_LEVEL` | Logging verbosity (DEBUG, INFO, WARNING, ERROR) | INFO |
 | `TZ` | Timezone for scheduler | America/Los_Angeles |
 
+### Understanding the subPath Mount Strategy
+
+You'll notice in the Deployment example that each site config file is mounted individually using `subPath`. This isn't just a preference - it's actually required to prevent permission issues.
+
+Here's what happens if you mount the ConfigMap to the entire directory:
+- Kubernetes makes `/app/data/config/sites/` completely read-only
+- The application tries to copy example template files during startup
+- It crashes with "Permission denied" errors
+
+By mounting each file individually with `subPath`, you get the best of both worlds:
+- Your site configs stay read-only and managed via GitOps (the ConfigMap files)
+- The directory itself remains writable for template files and other dynamic content
+- No security contexts or init containers required - it just works
+
 ### Adding New Sites
 
-To add a new site:
-1.  Add the YAML configuration to the `webowui-sites` ConfigMap.
-2.  Add a new `volumeMount` entry in the Deployment for the new file.
-3.  Apply the changes: `kubectl apply -f webowui.yaml`.
-4.  Restart the pod to pick up the new mount: `kubectl rollout restart deployment/web-to-openwebui -n web-to-openwebui`.
+When you're ready to add another site to scrape:
+
+1. **Update the ConfigMap** with your new site's configuration:
+   ```bash
+   kubectl edit configmap/webowui-sites -n web-to-openwebui
+   ```
+
+2. **Add a volumeMount** for the new file in your Deployment:
+   ```yaml
+   volumeMounts:
+     # ... your existing mounts ...
+     - name: config
+       mountPath: /app/data/config/sites/mynewsite.yaml
+       subPath: mynewsite.yaml  # Don't forget the subPath!
+   ```
+
+3. **Apply and restart** to pick up the changes:
+   ```bash
+   kubectl apply -f webowui.yaml
+   kubectl rollout restart deployment/web-to-openwebui -n web-to-openwebui
+   ```
+
+The scheduler will automatically discover the new site and start scraping according to its configured schedule.
+
+## Troubleshooting
+
+**Pod crashes with "Permission denied" or "Read-only file system" errors:**
+
+Check your volumeMounts - if you mounted the ConfigMap directly to `/app/data/config/sites` without using `subPath`, that's your problem. Each site config needs its own volumeMount entry with `subPath` specified. See the Deployment example above.
+
+**ConfigMap changes aren't showing up in the pod:**
+
+ConfigMaps are read when the pod starts, not dynamically. After updating your ConfigMap, restart the deployment:
+```bash
+kubectl rollout restart deployment/web-to-openwebui -n web-to-openwebui
+```
+
