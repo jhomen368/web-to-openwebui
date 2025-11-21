@@ -283,6 +283,66 @@ web-to-openwebui/
 - Auto-discovery from `data/config/profiles/`
 - Built-in profiles for MediaWiki, Fandom sites
 - User can create custom profiles without code changes
+- **Documentation:** [`webowui/scraper/cleaning_profiles/builtin_profiles/README.md`](../webowui/scraper/cleaning_profiles/builtin_profiles/README.md)
+
+### Creating Cleaning Profiles
+
+You can create custom cleaning profiles to handle site-specific content structures.
+
+1. **Create a new file** in `data/config/profiles/` (e.g., `mysite_profile.py`)
+
+2. **Use this template**:
+```python
+from webowui.scraper.cleaning_profiles.base import BaseCleaningProfile
+from typing import Dict, Any, Optional
+import re
+
+class MySiteProfile(BaseCleaningProfile):
+    """Describe what this profile cleans."""
+
+    def clean(self, content: str, metadata: Optional[Dict] = None) -> str:
+        """Clean content according to your rules."""
+        # Your cleaning logic here
+        lines = content.split('\n')
+        cleaned_lines = []
+
+        for line in lines:
+            # Example: Skip lines containing "Advertisement"
+            if "Advertisement" in line:
+                continue
+            cleaned_lines.append(line)
+
+        return '\n'.join(cleaned_lines)
+
+    @classmethod
+    def get_config_schema(cls) -> Dict[str, Any]:
+        """Define your configuration options."""
+        return {
+            "type": "object",
+            "properties": {
+                "remove_ads": {
+                    "type": "boolean",
+                    "default": True
+                },
+                "min_line_length": {
+                    "type": "number",
+                    "default": 10
+                }
+            }
+        }
+```
+
+3. **Reference in your site config**:
+```yaml
+# config/sites/mysite.yaml
+cleaning:
+  profile: "mysite"
+  config:
+    remove_ads: true
+    min_line_length: 15
+```
+
+4. **Restart or run next scrape** - your profile is automatically discovered!
 
 ### Adding New Features
 

@@ -218,37 +218,9 @@ cleaning:
 
 ### Create a Custom Profile
 
-For your specific website, create `data/config/profiles/mysite_profile.py`:
+Advanced users can create custom cleaning profiles for site-specific needs. Custom profiles are automatically discovered and require no code changes to the application.
 
-```python
-from webowui.scraper.cleaning_profiles.base import BaseCleaningProfile
-
-class MySiteProfile(BaseCleaningProfile):
-    """Cleans content for my specific site."""
-
-    def clean(self, content: str, metadata=None):
-        # Remove your site-specific boilerplate
-        return content
-
-    @classmethod
-    def get_config_schema(cls):
-        return {
-            "type": "object",
-            "properties": {
-                "remove_ads": {"type": "boolean", "default": True}
-            }
-        }
-```
-
-Then reference in your config:
-```yaml
-cleaning:
-  profile: "mysite"
-```
-
-It's automatically discovered—no restart needed!
-
-**See also:** [`data/config/profiles/README.md`](data/config/profiles/README.md)
+**For developers:** See [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md#creating-cleaning-profiles) for the full guide on creating custom profiles.
 
 ---
 
