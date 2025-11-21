@@ -268,6 +268,8 @@ cleaning:
 
 4. **Restart or run next scrape** - your profile is automatically discovered!
 
+**See also:** [`webowui/config/examples/README.md`](../../../config/examples/README.md) for site configuration templates.
+
 ## Configuration in Site Config
 
 Add to your site's YAML file:

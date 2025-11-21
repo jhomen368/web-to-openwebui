@@ -34,7 +34,7 @@ If you find this tool useful, please consider supporting its development:
 
 ## 🚀 Quick Start (5 minutes)
 
-The fastest way to get scraping: Docker Compose with zero setup.
+The fastest way to get scraping: Docker Compose with minimal setup.
 
 ### Prerequisites
 
@@ -66,13 +66,6 @@ services:
       - ./data:/app/data
 
     restart: unless-stopped
-
-    healthcheck:
-      test: ["CMD", "python", "-m", "webowui", "health"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
 EOF
 ```
 
@@ -184,26 +177,19 @@ docker compose exec webowui python -m webowui scrape --site newsite
 ```bash
 docker compose down                          # Stop container
 docker compose pull && docker compose up -d  # Update and restart
-docker compose exec webowui /bin/bash        # Access shell
+docker compose exec webowui python -m webowui cleanup --site mysite --dry-run
+docker compose exec webowui python -m webowui cleanup --site mysite
 ```
 
 ---
 
 ## 🧠 Understanding Content Cleaning
 
-Raw web content contains navigation menus, footers, and other UI elements that pollute LLM embeddings. web-to-openwebui removes this noise automatically.
+Raw web content contains navigation menus, footers, and other UI elements that pollute LLM embeddings. web-to-openwebui removes this noise automatically using modular cleaning profiles.
 
-### Built-in Profiles
+The system includes built-in profiles for some  platforms and supports custom profiles.
 
-**`none`** (default) - No cleaning, pass-through raw content
-
-**`mediawiki`** - For Wikipedia, wiki.js, and MediaWiki-based sites
-- Removes: navigation, footers, categories, citations, edit links
-- Configurable dead link filtering
-
-**`fandomwiki`** - For Fandom wikis (gaming, TV, movies, etc.)
-- Extends MediaWiki profile
-- Additionally removes: Fandom ads, cross-promotions, community sections
+👉 **See available profiles:** [`webowui/scraper/cleaning_profiles/builtin_profiles/README.md`](webowui/scraper/cleaning_profiles/builtin_profiles/README.md)
 
 ### Apply a Profile
 
@@ -218,37 +204,9 @@ cleaning:
 
 ### Create a Custom Profile
 
-For your specific website, create `data/config/profiles/mysite_profile.py`:
+Advanced users can create custom cleaning profiles for site-specific needs. Custom profiles are automatically discovered and require no code changes to the application.
 
-```python
-from webowui.scraper.cleaning_profiles.base import BaseCleaningProfile
-
-class MySiteProfile(BaseCleaningProfile):
-    """Cleans content for my specific site."""
-
-    def clean(self, content: str, metadata=None):
-        # Remove your site-specific boilerplate
-        return content
-
-    @classmethod
-    def get_config_schema(cls):
-        return {
-            "type": "object",
-            "properties": {
-                "remove_ads": {"type": "boolean", "default": True}
-            }
-        }
-```
-
-Then reference in your config:
-```yaml
-cleaning:
-  profile: "mysite"
-```
-
-It's automatically discovered—no restart needed!
-
-**See also:** [`data/config/profiles/README.md`](data/config/profiles/README.md)
+**For developers:** See [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md#creating-cleaning-profiles) for the full guide on creating custom profiles.
 
 ---
 
@@ -303,6 +261,13 @@ docker compose exec webowui python -m webowui cleanup --site mysite
 
 ## 🎯 CLI Command Reference
 
+All commands below assume you are running via Docker Compose.
+
+**Syntax:**
+```bash
+docker compose exec webowui python -m webowui <command> [options]
+```
+
 ### Scraping & Uploading
 
 ```bash
@@ -356,70 +321,43 @@ docker compose exec webowui python -m webowui --help
 docker compose exec webowui python -m webowui <command> --help
 ```
 
+**Top Commands:**
+
+```bash
+webowui scrape --site <name>              # Scrape a specific site
+webowui upload --site <name>              # Upload scraped content
+webowui list --site <name>                # List available scrapes
+webowui validate --site <name>            # Validate configuration
+webowui health                            # Check system health
+```
+
+For a complete list of commands and options, run:
+```bash
+docker compose exec webowui python -m webowui --help
+```
+
 ---
 
 ## 📖 Example Workflows
 
-### Workflow 1: MediaWiki Site
+The project includes ready-to-use configuration templates for common scenarios.
 
-```bash
-cp data/config/sites/mediawiki.yml.example data/config/sites/mywiki.yaml
-nano data/config/sites/mywiki.yaml          # Set base_url, start_urls
-docker compose exec webowui python -m webowui validate --site mywiki
-docker compose exec webowui python -m webowui scrape --site mywiki
-docker compose exec webowui python -m webowui upload --site mywiki
-```
+1. **Copy a template:**
+   ```bash
+   cp data/config/sites/mediawiki.yml.example data/config/sites/mywiki.yaml
+   ```
 
-### Workflow 2: Custom Website
+2. **Edit configuration:**
+   ```bash
+   nano data/config/sites/mywiki.yaml
+   ```
 
-```bash
-cat > data/config/sites/custom.yaml << 'EOF'
-site:
-  name: "custom"
-  display_name: "My Custom Site"
-  base_url: "https://example.com"
-  start_urls:
-    - "https://example.com/docs"
+3. **Run:**
+   ```bash
+   docker compose exec webowui python -m webowui scrape --site mywiki
+   ```
 
-strategy:
-  type: "recursive"
-  max_depth: 2
-  follow_patterns:
-    - ".*/docs/.*"
-  exclude_patterns:
-    - ".*/api/.*"
-    - ".*/admin/.*"
-
-cleaning:
-  profile: "none"
-
-openwebui:
-  knowledge_name: "Example Documentation"
-  auto_upload: true
-
-schedule:
-  enabled: true
-  type: "cron"
-  cron: "0 2 * * *"
-  timezone: "America/Los_Angeles"
-EOF
-
-docker compose exec webowui python -m webowui validate --site custom
-docker compose exec webowui python -m webowui scrape --site custom
-```
-
-### Workflow 3: Multi-Site Setup
-
-```bash
-cp data/config/sites/mediawiki.yml.example data/config/sites/wiki1.yaml
-cp data/config/sites/mediawiki.yml.example data/config/sites/wiki2.yaml
-cp data/config/sites/mediawiki.yml.example data/config/sites/wiki3.yaml
-
-# Edit each with different URLs and schedules
-
-docker compose exec webowui python -m webowui scrape --all
-docker compose exec webowui python -m webowui upload --all
-```
+👉 **See all templates:** [`webowui/config/examples/README.md`](webowui/config/examples/README.md)
 
 ---
 
@@ -464,23 +402,14 @@ docker compose exec webowui python -m webowui upload --site mysite
 
 Site configurations use YAML files in `data/config/sites/`.
 
-**Key fields:**
-- `site.name` - Unique identifier
-- `site.base_url` - Root URL of website
-- `site.start_urls` - Where to start scraping
-- `strategy.type` - `recursive` (follow links) or `selective` (patterns only)
-- `strategy.max_depth` - How deep to follow links
-- `follow_patterns` - URL regex patterns to include
-- `exclude_patterns` - URL regex patterns to skip
-- `cleaning.profile` - `none`, `mediawiki`, or `fandomwiki`
-- `openwebui.knowledge_name` - Name in OpenWebUI
-- `openwebui.auto_upload` - Auto-upload after scraping (true/false)
-- `schedule.cron` - Cron expression for automated runs
+👉 **Full Configuration Guide:** [`webowui/config/examples/README.md`](webowui/config/examples/README.md)
 
-**Example templates:**
-- `data/config/sites/simple_test.yml.example` - Minimal example
-- `data/config/sites/mediawiki.yml.example` - MediaWiki sites
-- `data/config/sites/example_site.yml.example` - Complete reference
+**Quick Reference:**
+- `site.name` - Unique identifier
+- `site.base_url` - Root URL
+- `strategy.type` - `recursive` or `selective`
+- `cleaning.profile` - Cleaning profile to use
+- `openwebui.auto_upload` - Enable auto-upload
 
 ---
 
@@ -508,7 +437,3 @@ MIT License - See LICENSE file for details
 **Have questions?**
 - 🐛 [Report Issues](https://github.com/jhomen368/web-to-openwebui/issues)
 - 💡 [Feature Requests](https://github.com/jhomen368/web-to-openwebui/discussions)
-
-**Want to help?**
-- 💖 [Support Development](https://www.paypal.com/donate?hosted_button_id=PBRD7FXKSKAD2)
-- 🔧 See [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) to contribute code

@@ -7,6 +7,11 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -207,7 +212,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Check if this is a pre-release based on tag name
+          if [[ "${{ github.ref_name }}" =~ -(alpha|beta|rc) ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          else
+            PRERELEASE_FLAG=""
+          fi
+
           gh release create ${{ github.ref_name }} \
+            $PRERELEASE_FLAG \
             --title "Release ${{ github.ref_name }}" \
             --notes "## Docker Images
           - \`ghcr.io/${{ github.repository }}:${{ github.ref_name }}\`
@@ -223,4 +236,4 @@ jobs:
           ## Pull the image
           \`\`\`bash
           docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}
-          \`\`\`"
+          \`\`\`
