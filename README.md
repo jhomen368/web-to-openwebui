@@ -34,7 +34,7 @@ If you find this tool useful, please consider supporting its development:
 
 ## 🚀 Quick Start (5 minutes)
 
-The fastest way to get scraping: Docker Compose with zero setup.
+The fastest way to get scraping: Docker Compose with minimal setup.
 
 ### Prerequisites
 
@@ -66,13 +66,6 @@ services:
       - ./data:/app/data
 
     restart: unless-stopped
-
-    healthcheck:
-      test: ["CMD", "python", "-m", "webowui", "health"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
 EOF
 ```
 
@@ -184,7 +177,8 @@ docker compose exec webowui python -m webowui scrape --site newsite
 ```bash
 docker compose down                          # Stop container
 docker compose pull && docker compose up -d  # Update and restart
-docker compose exec webowui /bin/bash        # Access shell
+docker compose exec webowui python -m webowui cleanup --site mysite --dry-run
+docker compose exec webowui python -m webowui cleanup --site mysite
 ```
 
 ---
@@ -266,6 +260,13 @@ docker compose exec webowui python -m webowui cleanup --site mysite
 ---
 
 ## 🎯 CLI Command Reference
+
+All commands below assume you are running via Docker Compose.
+
+**Syntax:**
+```bash
+docker compose exec webowui python -m webowui <command> [options]
+```
 
 ### Scraping & Uploading
 
@@ -436,7 +437,3 @@ MIT License - See LICENSE file for details
 **Have questions?**
 - 🐛 [Report Issues](https://github.com/jhomen368/web-to-openwebui/issues)
 - 💡 [Feature Requests](https://github.com/jhomen368/web-to-openwebui/discussions)
-
-**Want to help?**
-- 💖 [Support Development](https://www.paypal.com/donate?hosted_button_id=PBRD7FXKSKAD2)
-- 🔧 See [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) to contribute code
