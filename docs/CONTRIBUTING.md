@@ -242,12 +242,12 @@ web-to-openwebui/
 └── README.md                       # User documentation
 ```
 
-### Project Documentation:
-#   - README.md: Overview and quick start
-#   - docs/CONTRIBUTING.md: Development guide
+### Project Documentation
 
-# Example Configurations:
-#   - simple_test.yml.example: Minimal working example
+- **[`README.md`](../README.md)**: Overview and quick start
+- **[`docs/CONTRIBUTING.md`](CONTRIBUTING.md)**: Development guide
+- **[`webowui/config/examples/README.md`](../webowui/config/examples/README.md)**: Configuration reference
+- **[`webowui/scraper/cleaning_profiles/builtin_profiles/README.md`](../webowui/scraper/cleaning_profiles/builtin_profiles/README.md)**: Cleaning profiles reference
 
 ### Key Modules Explained
 
@@ -260,6 +260,7 @@ web-to-openwebui/
 - Load site YAML files
 - Validate configuration
 - Provide config to all other modules
+- **Templates:** [`webowui/config/examples/README.md`](../webowui/config/examples/README.md)
 
 **[`webowui/scraper/crawler.py`](../webowui/scraper/crawler.py)** - Main scraping logic
 - Uses crawl4ai for browser automation
@@ -283,7 +284,7 @@ web-to-openwebui/
 - Auto-discovery from `data/config/profiles/`
 - Built-in profiles for MediaWiki, Fandom sites
 - User can create custom profiles without code changes
-- **Documentation:** [`webowui/scraper/cleaning_profiles/builtin_profiles/README.md`](../webowui/scraper/cleaning_profiles/builtin_profiles/README.md)
+- For a list of available profiles, see the [Cleaning Profiles Reference](../webowui/scraper/cleaning_profiles/builtin_profiles/README.md).
 
 ### Creating Cleaning Profiles
 
