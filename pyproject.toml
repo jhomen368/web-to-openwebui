@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
-    {name = "Jason Homen", email = "jason@example.com"}
+    {name = "Joshua Homen", email = "joshua.homen@gmail.com"}
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -130,6 +130,7 @@ markers = [
 ]
 
 [tool.coverage.run]
+relative_files = true
 source = ["webowui"]
 omit = ["*/tests/*", "*/__pycache__/*", "*/venv/*"]
 branch = true
