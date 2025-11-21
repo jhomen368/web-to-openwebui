@@ -49,7 +49,7 @@ class MaxrollProfile(BaseCleaningProfile):
     def _remove_global_nav(self, content: str) -> str:
         """Remove global navigation and sidebar."""
         lines = content.split("\n")
-        cleaned_lines = []
+        cleaned_lines: list[str] = []
 
         # Heuristic: The global nav starts early and contains links to other games
         # We'll look for the start of the main content or specific nav markers
@@ -153,7 +153,7 @@ class MaxrollProfile(BaseCleaningProfile):
     def _remove_social_media(self, content: str) -> str:
         """Remove social media links."""
         lines = content.split("\n")
-        cleaned_lines = []
+        cleaned_lines: list[str] = []
 
         social_patterns = [
             r"twitter\.com",
