@@ -363,6 +363,11 @@ spec:
             - name: config
               mountPath: /app/data/config/sites/poe2wiki.yaml
               subPath: poe2wiki.yaml
+              mountPath: /app/data/config/sites/monsterhunter.yaml
+              subPath: monsterhunter.yaml
+            - name: config
+              mountPath: /app/data/config/sites/poe2wiki.yaml
+              subPath: poe2wiki.yaml
           resources:
             requests:
               memory: "512Mi"

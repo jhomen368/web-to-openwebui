@@ -238,7 +238,15 @@ jobs:
             PRERELEASE_FLAG=""
           fi
 
+          # Check if this is a pre-release based on tag name
+          if [[ "${{ github.ref_name }}" =~ -(alpha|beta|rc) ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          else
+            PRERELEASE_FLAG=""
+          fi
+
           gh release create ${{ github.ref_name }} \
+            $PRERELEASE_FLAG \
             $PRERELEASE_FLAG \
             --title "Release ${{ github.ref_name }}" \
             --notes-file release_notes.md \
