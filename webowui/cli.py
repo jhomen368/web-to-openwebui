@@ -742,7 +742,10 @@ def sites():
             console.print(f"  • [bold]{site_name}[/bold]")
             console.print(f"    Name: {site_config.display_name}")
             console.print(f"    URL: {site_config.base_url}")
-            console.print(f"    Strategy: {site_config.strategy_type}\n")
+            if site_config.knowledge_name:
+                console.print(f"    KB: {site_config.knowledge_name}")
+            console.print(f"    Auto-Upload: {site_config.auto_upload}")
+            console.print(f"    Schedule: {site_config.schedule_enabled}\n")
         except Exception:
             console.print(f"  • [bold]{site_name}[/bold] [red](error loading)[/red]\n")
 

@@ -7,10 +7,9 @@ on:
   pull_request:
     branches: [main]
 
+# Default permissions: least privilege (read-only)
 permissions:
   contents: read
-  pull-requests: write
-  issues: write
 
 env:
   REGISTRY: ghcr.io
@@ -21,7 +20,8 @@ jobs:
   lint:
     name: Python Linting
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read  # Checkout code only
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -45,14 +45,16 @@ jobs:
 
       - name: Run mypy type checking
         run: mypy webowui/ --ignore-missing-imports
-        continue-on-error: true  # Don't fail build on type errors initially
+        continue-on-error: true
 
   # Job 2: Run Tests with Coverage
   test:
     name: Run Tests
     runs-on: ubuntu-latest
     needs: lint
-
+    permissions:
+      contents: read          # Checkout code
+      pull-requests: write    # Comment coverage on PRs
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -95,20 +97,22 @@ jobs:
           MINIMUM_GREEN: 80
           MINIMUM_ORANGE: 70
 
-  # Job 3: Docker Build & Security Scanning
+  # Job 3: Docker Build & Security
   docker:
     name: Docker Build & Security
     runs-on: ubuntu-latest
     needs: [lint, test]
     permissions:
-      contents: read
-      packages: write
-      security-events: write
-      actions: read # Required for fetching workflow run details
-
+      contents: read          # Checkout code
+      packages: write         # Push to GHCR
+      security-events: write  # Upload SARIF to Security tab
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      # Required for multi-arch builds
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -139,47 +143,23 @@ jobs:
           dockerfile: Dockerfile
           failure-threshold: error
 
-      - name: Build Docker image (single arch for CI)
+      # STRATEGY 1: Single-arch build for validation (PRs & Main)
+      # Skips on tags to avoid duplicate build
+      - name: Build Docker image (Validation)
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         uses: docker/build-push-action@v5
         with:
           context: .
           push: false
-          load: true
+          load: true # Load to local docker daemon for scanning
           tags: web-to-openwebui:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
 
-      - name: Security Scan - Upload to GitHub Security
-        if: github.event_name != 'pull_request'
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: web-to-openwebui:test
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-          ignore-unfixed: true
-
-      - name: Upload Trivy results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v4
-        if: ${{ always() && github.event_name != 'pull_request' }}
-        continue-on-error: true
-        with:
-          sarif_file: 'trivy-results.sarif'
-          category: trivy
-
-      - name: Security Scan - Informational (non-blocking)
-        if: github.event_name != 'pull_request'
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: web-to-openwebui:test
-          format: 'table'
-          exit-code: '0'
-          severity: 'CRITICAL,HIGH'
-          ignore-unfixed: true
-
-      # Only build and push multi-arch on tags
-      - name: Build and push multi-arch (tags only)
+      # STRATEGY 2: Multi-arch build & push (Tags only)
+      # Direct build-to-push, skipping local load
+      - name: Build and push multi-arch (Release)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: docker/build-push-action@v5
         with:
@@ -193,7 +173,64 @@ jobs:
           sbom: true
           provenance: true
 
-  # Job 3: Create GitHub Release (tags only)
+      # SECURITY SCANNING
+      # Run on Main (local image) and Tags (remote image)
+      # Skipped on PRs for speed
+
+      # Scan Local Image (Main Branch) - Quality gate before releases
+      - name: Security Scan (Local Image)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: web-to-openwebui:test
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL'
+          exit-code: '1'  # Fail build on CRITICAL vulnerabilities
+          ignore-unfixed: true
+
+      # Scan Remote Image (Tags) - Scans the multi-arch manifest we just pushed
+      - name: Security Scan (Remote Image)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          ignore-unfixed: true
+
+      # Upload Results (Main & Tags)
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v4
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v')
+        continue-on-error: true
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: trivy
+
+      # Console Summary (Main & Tags) - Quick view in logs (all severities)
+      - name: Security Scan Summary (Local Image)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: 'web-to-openwebui:test'
+          format: 'table'
+          exit-code: '0'  # Non-blocking summary
+          severity: 'CRITICAL,HIGH,MEDIUM'  # Show all for visibility
+          ignore-unfixed: true
+
+      - name: Security Scan Summary (Remote Image)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+          format: 'table'
+          exit-code: '0' # Non-blocking for summary
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+
+  # Job 4: Create GitHub Release (tags only)
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
@@ -214,10 +251,12 @@ jobs:
         id: extract_notes
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
-          # Try to extract content between "## [VERSION]" and the next "## ["
-          # The sed command finds the range, deletes the first line (header) and the last line (next header)
-          # If the version isn't found, the file will be empty
-          sed -n "/^## \[$VERSION\]/,/^## \[/p" CHANGELOG.md | sed '1d;$d' > release_notes.md
+          # Use awk to find the version block and print until the next block or EOF
+          awk -v ver="## [$VERSION]" '
+            $0 ~ ver { in_block=1; next }
+            /^## \[/ { in_block=0 }
+            in_block { print }
+          ' CHANGELOG.md > release_notes.md
           
           # Check if release_notes.md is empty or only whitespace
           if [ ! -s release_notes.md ] || ! grep -q "[^[:space:]]" release_notes.md; then
@@ -231,13 +270,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Check if this is a pre-release based on tag name
-          if [[ "${{ github.ref_name }}" =~ -(alpha|beta|rc) ]]; then
-            PRERELEASE_FLAG="--prerelease"
-          else
-            PRERELEASE_FLAG=""
-          fi
-
           # Check if this is a pre-release based on tag name
           if [[ "${{ github.ref_name }}" =~ -(alpha|beta|rc) ]]; then
             PRERELEASE_FLAG="--prerelease"
