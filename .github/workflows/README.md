@@ -247,7 +247,7 @@ graph TB
 ### 2. Smart Security Scanning
 - **PRs:** Skipped (fast feedback loop)
 - **Main:** Scans local build (CRITICAL-only quality gate)
-- **Tags:** Pre-flight scan (blocks vulnerable releases)
+- **Tags:** Pre-flight scan
 
 ### 3. Aggressive Caching
 - **Pip dependencies:** GitHub Actions cache
@@ -276,16 +276,6 @@ graph TB
 
 **Tag Release (Pre-flight):**
 - Builds single-arch image (`linux/amd64`) locally
-- **Scans BEFORE pushing to GHCR**
-- Blocks on **CRITICAL** vulnerabilities
-- **Prevents publishing vulnerable images**
-- If scan fails, multi-arch build and push are skipped
-
-**Why Pre-flight Scan on Release?**
-- ✅ Avoids remote registry authentication issues (especially private repos)
-- ✅ Prevents publishing vulnerable images (scan-then-push, not push-then-scan)
-- ✅ Quality gate: only clean images reach the registry
-- ⚠️ Trade-off: Adds ~2 minutes (build twice - single for scan, multi for release)
 
 **Configuration:**
 - **Scanners:** `vuln` only (vulnerabilities, not secrets)
