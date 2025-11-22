@@ -271,7 +271,7 @@ class MediaWikiProfile(BaseCleaningProfile):
 
             # If line is empty, skip
             if not line.strip():
-                cleaned_lines.append(line) # Preserve blank lines between header and content
+                cleaned_lines.append(line)  # Preserve blank lines between header and content
                 continue
 
             # Check if line matches skip patterns

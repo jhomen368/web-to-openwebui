@@ -71,9 +71,7 @@ class WikiCrawler:
                 use_streaming = getattr(self.config, "use_streaming", False)
 
                 if use_streaming:
-                    async for result in crawler.arun(
-                        url=self.config.start_urls[0], config=config
-                    ):
+                    async for result in crawler.arun(url=self.config.start_urls[0], config=config):
                         crawl_result = self._convert_result(result)
                         self.results.append(crawl_result)
 
@@ -232,6 +230,15 @@ class WikiCrawler:
 
     def _convert_result(self, crawl4ai_result) -> CrawlResult:
         """Convert crawl4ai result to our CrawlResult format."""
+        if not crawl4ai_result.success:
+            return CrawlResult(
+                url=crawl4ai_result.url,
+                success=False,
+                markdown="",
+                links=[],
+                error=crawl4ai_result.error_message,
+            )
+
         # Use fit_markdown if available (filtered), fallback to raw
         markdown = (
             crawl4ai_result.markdown.fit_markdown
@@ -243,30 +250,24 @@ class WikiCrawler:
         min_length = getattr(self.config, "min_page_length", 100)
         max_length = getattr(self.config, "max_page_length", 500000)
 
-        if len(markdown) < min_length:
-            return CrawlResult(
-                url=crawl4ai_result.url,
-                success=False,
-                error=f"Content too short ({len(markdown)} chars < {min_length})",
-                markdown="",
-                links=[],
-            )
+        error_message = crawl4ai_result.error_message
+        final_success = crawl4ai_result.success
 
-        if len(markdown) > max_length:
-            return CrawlResult(
-                url=crawl4ai_result.url,
-                success=False,
-                error=f"Content too long ({len(markdown)} chars > {max_length})",
-                markdown="",
-                links=[],
-            )
+        if len(markdown) < min_length:
+            error_message = f"Content too short ({len(markdown)} chars < {min_length})"
+            final_success = False
+            markdown = ""  # Discard content
+        elif len(markdown) > max_length:
+            error_message = f"Content too long ({len(markdown)} chars > {max_length})"
+            final_success = False
+            markdown = ""  # Discard content
 
         return CrawlResult(
             url=crawl4ai_result.url,
-            success=crawl4ai_result.success,
+            success=final_success,
             markdown=markdown,
             links=self._extract_links(crawl4ai_result.links),
-            error=crawl4ai_result.error_message,
+            error=error_message,
         )
 
     def _extract_links(self, links_dict: dict) -> list[str]:

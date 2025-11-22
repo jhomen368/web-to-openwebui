@@ -162,7 +162,7 @@ jobs:
 
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
-        if: always() && github.event_name != 'pull_request'
+        if: ${{ always() && github.event_name != 'pull_request' }}
         continue-on-error: true
         with:
           sarif_file: 'trivy-results.sarif'
@@ -246,7 +246,6 @@ jobs:
           fi
 
           gh release create ${{ github.ref_name }} \
-            $PRERELEASE_FLAG \
             $PRERELEASE_FLAG \
             --title "Release ${{ github.ref_name }}" \
             --notes-file release_notes.md \

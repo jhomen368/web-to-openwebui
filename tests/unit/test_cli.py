@@ -1045,15 +1045,18 @@ def test_rollback_command_interactive(
     assert result.exit_code == 0
     assert "Rolling back to 2023-01-01" in result.output
     assert "Rollback successful" in result.output
-    mock_cdm.rebuild_from_timestamp.assert_called_with("2023-01-01")
+    mock_cdm.rebuild_from_timestamp.assert_called_once_with("2023-01-01")
+
+    # Reset mock for the next independent test case
+    mock_cdm.reset_mock()
 
     # Test with 'n' input
     result = runner.invoke(cli, ["rollback", "--site", "site1"], input="n\n")
 
     assert result.exit_code == 0
     assert "Cancelled" in result.output
-    # Should not call rebuild again (call count remains 1 from previous test)
-    assert mock_cdm.rebuild_from_timestamp.call_count == 1
+    # Should not call rebuild at all in this case
+    mock_cdm.rebuild_from_timestamp.assert_not_called()
 
 
 @patch("webowui.cli.RetentionManager")

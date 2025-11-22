@@ -294,8 +294,21 @@ async def test_crawler_crawl_streaming(mock_site_config_obj):
 
     # Mock crawl4ai
     with patch("webowui.scraper.crawler.AsyncWebCrawler") as mock_crawler_cls:
-        mock_crawler_instance = AsyncMock()
-        mock_crawler_cls.return_value.__aenter__.return_value = mock_crawler_instance
+        # Use MagicMock for the instance so we can control arun's return type
+        # (AsyncMock forces it to be a coroutine, but we need an async generator)
+        mock_crawler_instance = MagicMock()
+        # Make __aenter__ return the instance (async context manager)
+        mock_crawler_instance.__aenter__.return_value = mock_crawler_instance
+        mock_crawler_instance.__aexit__.return_value = None
+        
+        # We need __aenter__ to be awaitable
+        async def async_aenter(*args, **kwargs):
+            return mock_crawler_instance
+            
+        mock_crawler_instance.__aenter__ = AsyncMock(side_effect=async_aenter)
+        mock_crawler_instance.__aexit__ = AsyncMock(return_value=None)
+
+        mock_crawler_cls.return_value = mock_crawler_instance
 
         # Mock crawl result
         mock_result = MagicMock()
@@ -306,10 +319,10 @@ async def test_crawler_crawl_streaming(mock_site_config_obj):
         mock_result.error_message = None
 
         # Mock arun return value (async generator for streaming)
-        async def async_gen():
+        async def async_gen(*args, **kwargs):
             yield mock_result
 
-        mock_crawler_instance.arun.return_value = async_gen()
+        mock_crawler_instance.arun.side_effect = async_gen
 
         results = await crawler.crawl()
 
