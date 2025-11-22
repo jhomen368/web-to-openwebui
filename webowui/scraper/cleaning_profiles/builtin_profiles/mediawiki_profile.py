@@ -269,6 +269,11 @@ class MediaWikiProfile(BaseCleaningProfile):
                 cleaned_lines.append(line)
                 continue
 
+            # If line is empty, skip
+            if not line.strip():
+                cleaned_lines.append(line) # Preserve blank lines between header and content
+                continue
+
             # Check if line matches skip patterns
             should_skip = False
             for pattern in skip_patterns:
@@ -291,22 +296,6 @@ class MediaWikiProfile(BaseCleaningProfile):
                 # Let's skip it if we are still in the "header zone" (first 50 lines)
                 if i < 50:
                     continue
-
-            # If we reached here, it's likely content
-            # But wait, frontmatter is handled separately.
-            # If line is empty, skip
-            if not line.strip():
-                continue
-
-            # If line is "---", it might be frontmatter or horizontal rule
-            # We assume frontmatter is already handled or will be handled by _extract_main_content
-            # But _extract_main_content runs AFTER this.
-            # So we should preserve frontmatter.
-            if line.strip() == "---":
-                cleaned_lines.append(line)
-                content_started = True  # Wait, if it's frontmatter start, we are in content?
-                # Actually, let's just append it and let _extract_main_content handle it
-                continue
 
             # If we found real content, stop skipping
             cleaned_lines.append(line)
