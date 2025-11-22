@@ -826,25 +826,14 @@ perf(crawler): Improve concurrent request handling
 
 ## CI/CD Pipeline
 
-### What Runs Where
+For detailed information about the CI/CD pipeline, including workflow architecture, optimization strategies, and security scanning details, see:
 
-**On Pull Request:**
-1. **Python Linting** (2 min) - ruff, black, mypy
-2. **Dockerfile Linting** (1 min) - hadolint
-3. **Build Docker Image** (5 min) - Single architecture
-4. **Security Scan** (2 min) - Trivy vulnerability scan
+**📖 [GitHub Actions Workflows Documentation](../.github/workflows/README.md)**
 
-**On Push to main:**
-1. All PR checks above
-
-**On Git Tag (v*.*.*):**
-1. All checks above
-2. Multi-arch builds (amd64, arm64) - 15 min
-3. Push to GHCR
-4. Create GitHub Release
-
-**Scheduled (Daily 8 AM UTC):**
-- Security scanning of published images
+**Quick Summary:**
+- **Pull Requests:** Lint, test, build (no security scan for speed)
+- **Push to Main:** All checks + security scan (blocks on CRITICAL only)
+- **Git Tags:** Multi-arch build, publish to GHCR, create release
 
 ### Replicate CI Locally
 

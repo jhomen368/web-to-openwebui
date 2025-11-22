@@ -172,21 +172,22 @@ jobs:
       # Run on Main (local image) and Tags (remote image)
       # Skipped on PRs for speed
 
-      # Scan Local Image (Main Branch)
+      # Scan Local Image (Main Branch) - Quality gate before releases
       - name: Security Scan (Local Image)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: web-to-openwebui:test
           format: 'sarif'
           output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH,MEDIUM'
+          severity: 'CRITICAL'
+          exit-code: '1'  # Fail build on CRITICAL vulnerabilities
           ignore-unfixed: true
 
       # Scan Remote Image (Tags) - Scans the multi-arch manifest we just pushed
       - name: Security Scan (Remote Image)
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
           format: 'sarif'
@@ -203,12 +204,22 @@ jobs:
           sarif_file: 'trivy-results.sarif'
           category: trivy
 
-      # Console Summary (Main & Tags) - Quick view in logs
-      - name: Security Scan Summary
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v')
-        uses: aquasecurity/trivy-action@master
+      # Console Summary (Main & Tags) - Quick view in logs (all severities)
+      - name: Security Scan Summary (Local Image)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: aquasecurity/trivy-action@0.33.1
         with:
-          image-ref: ${{ startsWith(github.ref, 'refs/tags/v') && format('{0}/{1}:{2}', env.REGISTRY, env.IMAGE_NAME, github.ref_name) || 'web-to-openwebui:test' }}
+          image-ref: 'web-to-openwebui:test'
+          format: 'table'
+          exit-code: '0'  # Non-blocking summary
+          severity: 'CRITICAL,HIGH,MEDIUM'  # Show all for visibility
+          ignore-unfixed: true
+
+      - name: Security Scan Summary (Remote Image)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
           format: 'table'
           exit-code: '0' # Non-blocking for summary
           severity: 'CRITICAL,HIGH'
@@ -235,8 +246,12 @@ jobs:
         id: extract_notes
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
-          # Try to extract content between "## [VERSION]" and the next "## ["
-          sed -n "/^## \[$VERSION\]/,/^## \[/p" CHANGELOG.md | sed '1d;$d' > release_notes.md
+          # Use awk to find the version block and print until the next block or EOF
+          awk -v ver="## [$VERSION]" '
+            $0 ~ ver { in_block=1; next }
+            /^## \[/ { in_block=0 }
+            in_block { print }
+          ' CHANGELOG.md > release_notes.md
           
           # Check if release_notes.md is empty or only whitespace
           if [ ! -s release_notes.md ] || ! grep -q "[^[:space:]]" release_notes.md; then

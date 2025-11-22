@@ -260,18 +260,30 @@ graph TB
 
 ## Security Scanning Details
 
-### Trivy Configuration
+### Trivy Configuration (v0.33.1)
 
-**Scan Levels:**
-- CRITICAL: Always fail
-- HIGH: Always fail  
-- MEDIUM: Report only
+**Scan Strategy**
+
+**Quality Gate (Main Branch):**
+- **CRITICAL:** ❌ Blocks build (`exit-code: 1`)
+- **HIGH:** ✅ Tracked, non-blocking
+- **MEDIUM:** ✅ Tracked, non-blocking
+
+**Rationale:**
+- **CRITICAL** vulnerabilities are severe, exploitable, and usually fixable in our code
+- **HIGH/MEDIUM** are often in upstream base images (Debian, Python) that we can't control
+- `ignore-unfixed: true` prevents failures on unpatchable upstream issues
+- Pragmatic balance: catch serious issues without blocking valid releases
+
+**Scan Locations:**
+1. **Main Branch:** Scans local build (`web-to-openwebui:test`)
+2. **Tag Release:** Scans pushed registry image (post-publish verification)
 
 **Outputs:**
-1. **SARIF:** Uploaded to GitHub Security tab for issue tracking
-2. **Table:** Displayed in workflow logs for quick review
+1. **SARIF:** Uploaded to GitHub Security tab for all severities (CRITICAL, HIGH, MEDIUM)
+2. **Table:** Console summary in workflow logs for quick review
 
-**Unfixed Vulnerabilities:** Ignored (base OS issues we can't fix)
+**Best Practice:** Monitor GitHub Security tab regularly. Address CRITICAL immediately. Plan upgrades for HIGH when upstream patches available.
 
 ---
 
