@@ -161,7 +161,7 @@ graph TB
 
 **Trigger:** Push tag `v*` (e.g., v1.0.0, v1.2.3-beta)
 
-**Goal:** Optimized production release. Builds multi-arch directly, skipping redundant validation.
+**Goal:** Secure production release. Pre-flight scan prevents publishing vulnerable images.
 
 ```mermaid
 graph TB
@@ -175,13 +175,14 @@ graph TB
         D3 --> D4[Extract Metadata]
         D4 --> D5[Hadolint]
         D5 --> D6{Tag Event?}
-        D6 -->|Yes| D7[Skip Single-Arch<br/>Validation Build]
-        D7 --> D8[Build Multi-Arch<br/>linux/amd64<br/>linux/arm64]
-        D8 --> D9[Push to GHCR]
-        D9 --> D10[Generate SBOM &<br/>Provenance]
-        D10 --> D11[Security Scan<br/>Remote Registry Image]
+        D6 -->|Yes| D7[Build Single-Arch<br/>linux/amd64<br/>Load Locally]
+        D7 --> D8[Security Scan<br/>Local Image]
+        D8 -->|PASS| D9[Build Multi-Arch<br/>linux/amd64<br/>linux/arm64]
+        D9 --> D10[Push to GHCR]
+        D10 --> D11[Generate SBOM &<br/>Provenance]
         D11 --> D12[Upload SARIF]
         D12 --> D13[Display Summary]
+        D8 -->|FAIL| D14[STOP:<br/>Don't Publish]
     end
     
     subgraph "Release Job"
@@ -206,21 +207,22 @@ graph TB
     style R6 fill:#e8f5e9,stroke:#2e7d32
 ```
 
-**Key Optimization:** Skips single-arch build entirely - builds multi-arch directly!
+**Key Security Feature:** Pre-flight scan prevents publishing vulnerable images!
 
 **What Runs:**
 - ✅ Complete lint & test suite
-- ✅ Multi-arch build (linux/amd64, linux/arm64) - **direct build, no pre-validation**
+- ✅ **Pre-flight Build** (linux/amd64) - Local scan target
+- ✅ **Security Scan** (local image) - Quality gate
+- ✅ **Multi-arch build** (linux/amd64, linux/arm64) - Only if scan passes
 - ✅ Push to GitHub Container Registry
 - ✅ Generate SBOM and provenance attestations
-- ✅ Security scan the pushed registry image
+- ✅ Upload SARIF to GitHub Security tab
 - ✅ Create GitHub Release with auto-extracted changelog
 - ✅ Detect pre-release tags (alpha/beta/rc)
 
-**What's Skipped:**
-- ❌ Single-arch validation build (already validated on main)
+**Security Benefit:** Vulnerable images are never published - scan happens BEFORE push.
 
-**Estimated Duration:** ~10 minutes (was ~18 minutes before optimization)
+**Estimated Duration:** ~12 minutes (pre-flight scan adds ~2 min, prevents bad releases)
 
 ---
 
@@ -229,22 +231,23 @@ graph TB
 | Condition | Lint | Test | Build Type | Security Scan | Push Registry | Release |
 |-----------|------|------|------------|---------------|---------------|---------|
 | **Pull Request** | ✅ | ✅ | Single-arch | ❌ | ❌ | ❌ |
-| **Push to Main** | ✅ | ✅ | Single-arch | ✅ Local | ❌ | ❌ |
-| **Tag v*** | ✅ | ✅ | Multi-arch | ✅ Remote | ✅ | ✅ |
+| **Push to Main** | ✅ | ✅ | Single-arch | ✅ Local (CRITICAL only) | ❌ | ❌ |
+| **Tag v*** | ✅ | ✅ | Single + Multi | ✅ **Pre-flight** (before push) | ✅ | ✅ |
 
 ---
 
 ## Key Optimizations
 
-### 1. No Duplicate Builds on Releases
-- **Before:** Single-arch build → Scan → Multi-arch build
-- **After:** Multi-arch build only → Scan
-- **Savings:** ~5-8 minutes per release
+### 1. Pre-flight Security Scanning
+- **Strategy:** Build → Scan → Push (not Push → Scan)
+- **Benefit:** Vulnerable images never reach the registry
+- **Tag Releases:** Single-arch build → Scan → Multi-arch build & push
+- **Trade-off:** +2 minutes per release, but ensures security
 
 ### 2. Smart Security Scanning
 - **PRs:** Skipped (fast feedback loop)
-- **Main:** Scans local build (thorough validation)
-- **Tags:** Scans pushed registry image (production verification)
+- **Main:** Scans local build (CRITICAL-only quality gate)
+- **Tags:** Pre-flight scan (blocks vulnerable releases)
 
 ### 3. Aggressive Caching
 - **Pip dependencies:** GitHub Actions cache
@@ -262,26 +265,38 @@ graph TB
 
 ### Trivy Configuration (v0.33.1)
 
-**Scan Strategy**
+**Scan Strategy - Pre-flight Security Gates**
 
-**Quality Gate (Main Branch):**
-- **CRITICAL:** ❌ Blocks build (`exit-code: 1`)
-- **HIGH:** ✅ Tracked, non-blocking
-- **MEDIUM:** ✅ Tracked, non-blocking
+**Quality Gates (Block Releases):**
 
-**Rationale:**
-- **CRITICAL** vulnerabilities are severe, exploitable, and usually fixable in our code
-- **HIGH/MEDIUM** are often in upstream base images (Debian, Python) that we can't control
-- `ignore-unfixed: true` prevents failures on unpatchable upstream issues
-- Pragmatic balance: catch serious issues without blocking valid releases
+**Main Branch:**
+- Scans local build before merging to main
+- Blocks ONLY on **CRITICAL** vulnerabilities
+- HIGH/MEDIUM tracked but non-blocking
 
-**Scan Locations:**
-1. **Main Branch:** Scans local build (`web-to-openwebui:test`)
-2. **Tag Release:** Scans pushed registry image (post-publish verification)
+**Tag Release (Pre-flight):**
+- Builds single-arch image (`linux/amd64`) locally
+- **Scans BEFORE pushing to GHCR**
+- Blocks on **CRITICAL** vulnerabilities
+- **Prevents publishing vulnerable images**
+- If scan fails, multi-arch build and push are skipped
+
+**Why Pre-flight Scan on Release?**
+- ✅ Avoids remote registry authentication issues (especially private repos)
+- ✅ Prevents publishing vulnerable images (scan-then-push, not push-then-scan)
+- ✅ Quality gate: only clean images reach the registry
+- ⚠️ Trade-off: Adds ~2 minutes (build twice - single for scan, multi for release)
+
+**Configuration:**
+- **Scanners:** `vuln` only (vulnerabilities, not secrets)
+- **Severity:** CRITICAL, HIGH, MEDIUM (all tracked in SARIF)
+- **Blocking:** CRITICAL only (`exit-code: '1'`)
+- **Ignore Unfixed:** `true` (don't fail on upstream/unpatchable issues)
+- **SARIF Filtering:** `limit-severities-for-sarif: true` (required for severity to work)
 
 **Outputs:**
-1. **SARIF:** Uploaded to GitHub Security tab for all severities (CRITICAL, HIGH, MEDIUM)
-2. **Table:** Console summary in workflow logs for quick review
+1. **SARIF:** Uploaded to GitHub Security tab for all severities
+2. **Table:** Console summary in workflow logs
 
 **Best Practice:** Monitor GitHub Security tab regularly. Address CRITICAL immediately. Plan upgrades for HIGH when upstream patches available.
 
