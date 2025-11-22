@@ -107,7 +107,7 @@ crawling:
     follow_patterns:
       - ".*/docs/.*"
 
-cleaning:
+markdown_cleaning:
   profile: "none"
 
 openwebui:
