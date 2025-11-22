@@ -300,11 +300,11 @@ async def test_crawler_crawl_streaming(mock_site_config_obj):
         # Make __aenter__ return the instance (async context manager)
         mock_crawler_instance.__aenter__.return_value = mock_crawler_instance
         mock_crawler_instance.__aexit__.return_value = None
-        
+
         # We need __aenter__ to be awaitable
         async def async_aenter(*args, **kwargs):
             return mock_crawler_instance
-            
+
         mock_crawler_instance.__aenter__ = AsyncMock(side_effect=async_aenter)
         mock_crawler_instance.__aexit__ = AsyncMock(return_value=None)
 

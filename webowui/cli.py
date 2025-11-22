@@ -115,11 +115,12 @@ async def _scrape_site(site_config: SiteConfig, do_upload: bool = False):
     if do_upload and site_config.auto_upload:
         console.print("\n[blue]Uploading to OpenWebUI...[/blue]")
         await _upload_scrape(
-            site_config.name,
-            save_info["timestamp"],
-            site_config.knowledge_name,
-            site_config.knowledge_description,
-            site_config.knowledge_id,
+            site_name=site_config.name,
+            from_timestamp=None,  # Use current/ directory for incremental upload
+            incremental=True,
+            knowledge_name=site_config.knowledge_name,
+            knowledge_description=site_config.knowledge_description,
+            knowledge_id=site_config.knowledge_id,
         )
 
 
