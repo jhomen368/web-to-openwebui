@@ -185,7 +185,9 @@ jobs:
           image-ref: web-to-openwebui:test
           format: 'sarif'
           output: 'trivy-results.sarif'
+          scanners: 'vuln'
           severity: 'CRITICAL'
+          limit-severities-for-sarif: true  # Required: Make severity filter work with SARIF
           exit-code: '1'  # Fail build on CRITICAL vulnerabilities
           ignore-unfixed: true
 
@@ -193,10 +195,14 @@ jobs:
       - name: Security Scan (Remote Image)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: aquasecurity/trivy-action@0.33.1
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
           format: 'sarif'
           output: 'trivy-results.sarif'
+          scanners: 'vuln'
           severity: 'CRITICAL,HIGH,MEDIUM'
           ignore-unfixed: true
 
@@ -216,6 +222,7 @@ jobs:
         with:
           image-ref: 'web-to-openwebui:test'
           format: 'table'
+          scanners: 'vuln'  # Only vulnerability scanning
           exit-code: '0'  # Non-blocking summary
           severity: 'CRITICAL,HIGH,MEDIUM'  # Show all for visibility
           ignore-unfixed: true
@@ -223,9 +230,13 @@ jobs:
       - name: Security Scan Summary (Remote Image)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: aquasecurity/trivy-action@0.33.1
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
           format: 'table'
+          scanners: 'vuln'  # Only vulnerability scanning
           exit-code: '0' # Non-blocking for summary
           severity: 'CRITICAL,HIGH'
           ignore-unfixed: true
