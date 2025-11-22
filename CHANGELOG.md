@@ -5,58 +5,142 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-11-21
+## [1.0.0] - 2025-11-22
 
-### Breaking Changes
-- Config structure: `strategy` → `crawling`
-- Strategy types renamed: `recursive` → `bfs`, `selective` → `dfs`, `depth_limited` → `bfs`
-- Removed `webowui/scraper/strategies.py` (replaced by crawl4ai built-in strategies)
+### 🎉 First Stable Release
 
-### Added
-- ✨ **crawl4ai Deep Crawling Integration**
-  - BFS (Breadth-First Search) strategy - recommended default
-  - DFS (Depth-First Search) strategy
-  - BestFirst strategy with keyword-based prioritization
-  - Streaming mode support (`streaming: true` in config)
-- ✨ **Two-Stage Content Filtering**
-  - Stage 1: Generic HTML filtering via crawl4ai (optional)
-  - Stage 2: Site-specific markdown cleaning via profiles (existing)
-- ✨ **New Configuration Options**
-  - `content_filtering` section for Stage 1 filtering
-  - `max_pages` limit for large sites
-  - `keywords` and `keyword_weight` for BestFirst strategy
+web-to-openwebui is now production-ready! This release represents a complete, tested system for scraping web content and uploading it to OpenWebUI knowledge bases with intelligent content filtering and incremental updates.
 
-### Changed
-- ♻️ **Refactored Crawler Architecture**
-  - Uses crawl4ai's AsyncWebCrawler with deep_crawl_strategy
-  - Simplified from 442 lines to ~300 lines (33% reduction)
-  - No custom queue management (uses proven library)
-- ♻️ **Simplified MediaWikiProfile**
-  - Focuses on MediaWiki-specific patterns only
-  - Generic HTML filtering moved to crawl4ai Stage 1
-  - Reduced from ~130 lines to ~50 lines in main method
+### ⚠️ Breaking Changes
 
-### Removed
-- 🗑️ **Deleted `webowui/scraper/strategies.py`** (183 lines)
-  - Replaced by crawl4ai's BFSDeepCrawlStrategy, DFSDeepCrawlStrategy, BestFirstCrawlingStrategy
-- 🗑️ **Deleted `tests/unit/test_strategies.py`** (303 lines)
-  - Replaced with new tests for crawl4ai integration
+If upgrading from pre-release versions, note these configuration changes:
 
-### Fixed
-- 🐛 Restored missing `_extract_links()` helper method in crawler
-- 🐛 Fixed all linting issues (ruff, black, mypy)
+- **Configuration structure updated**: The `strategy` section is now `crawling` with new options
+- **Crawling strategies renamed** for clarity:
+  - `recursive` → `bfs` (Breadth-First Search - recommended default)
+  - `selective` → `dfs` (Depth-First Search)
+  - `depth_limited` → `bfs` with `max_depth` parameter
+- **Migration**: Update your site configuration files to use the new `crawling` section format (see examples in `webowui/config/examples/`)
 
-### Developer Experience
-- 📚 Updated all documentation (README, CONTRIBUTING, memory bank)
-- ✅ All 45 crawler tests passing
-- ✅ Full test suite validation
-- 📝 Clear migration path from old to new config structure
+### ✨ Features
 
-### Performance
-- 🚀 Automatic improvements as crawl4ai library evolves
-- 🚀 Streaming mode reduces memory usage for large sites
-- 🚀 Better content filtering reduces embedding noise
+#### Intelligent Web Crawling
+- **Modern crawling strategies** powered by crawl4ai:
+  - **BFS (Breadth-First)**: Comprehensive coverage, discovers content level-by-level (recommended for most sites)
+  - **DFS (Depth-First)**: Deep exploration of specific branches
+  - **BestFirst**: Keyword-based prioritization for targeted scraping
+- **Streaming mode**: Process pages as they're crawled, reducing memory usage for large sites
+- **Page limits**: Configure `max_pages` to control scrape size on massive wikis
 
-## [0.9.0] - Pre-release
+#### Advanced Content Filtering
+- **Three-stage content pipeline** for optimal embedding quality:
+  1. **HTML Filtering** (optional): Remove generic noise (nav, footer, ads) before markdown conversion
+  2. **Markdown Conversion**: Clean HTML to markdown transformation
+  3. **Profile Cleaning**: Site-specific pattern removal (MediaWiki TOCs, Fandom ads, etc.)
+- **New cleaning profiles**:
+  - **MaxRoll Profile**: Optimized for gaming guide websites (maxroll.gg and similar)
+  - **Enhanced MediaWiki Profile**: Removes TOCs, version history, wiki meta, and navigation boilerplate
+  - **Enhanced Fandom Profile**: Handles Fandom-specific advertising and promotional content
+- **Configurable filtering**: Enable/disable specific cleaning steps per site
 
-Initial development version before crawl4ai integration.
+#### Deployment & Operations
+- **Kubernetes support**: Complete deployment guides and manifests for production clusters
+- **Enhanced Docker setup**: Improved healthchecks, security scanning, and container optimization
+- **Automated scheduling**: Built-in scheduler daemon for periodic scraping (via `webowui daemon`)
+- **Incremental uploads**: Intelligent change detection uploads only new/modified content
+
+#### Developer Experience
+- **Professional CI/CD pipeline**:
+  - Automated security scanning with Trivy
+  - Code quality enforcement (Ruff, Black, Mypy)
+  - Automated release notes extraction
+  - Multi-architecture Docker builds (amd64/arm64)
+- **Pre-commit hooks**: Code quality checks before commits
+- **Comprehensive test suite**: 45+ unit tests with high coverage
+
+### 🚀 Improvements
+
+#### Performance
+- **Crawler optimization**: Reduced code complexity by 33% (442 → ~300 lines) while adding features
+- **Better memory efficiency**: Streaming mode for large sites
+- **Automatic improvements**: Benefit from ongoing crawl4ai library enhancements
+
+#### Content Quality
+- **Cleaner markdown output**: Two-stage filtering removes more noise
+- **Better embeddings**: Optimized content for RAG systems
+- **Flexible configuration**: Fine-tune cleaning behavior per site
+
+#### Security
+- **Container hardening**: Non-root user, minimal base image, dropped capabilities
+- **Vulnerability scanning**: Automated Trivy scans in CI/CD
+- **Least-privilege permissions**: GitHub Actions follow security best practices
+
+### 🐛 Bug Fixes
+
+- Fixed incremental upload functionality with proper keyword argument handling
+- Restored missing link extraction helper methods in crawler
+- Corrected configuration documentation and examples
+- Fixed all linting issues (Ruff, Black, Mypy)
+- Resolved Docker healthcheck command issues
+- Fixed CI/CD pipeline Python version compatibility
+
+### 📚 Documentation
+
+- **Complete user documentation**: Docker-first README with quick start guides
+- **Kubernetes deployment guide**: Production-ready cluster setup
+- **Contributing guide**: Comprehensive developer documentation (1,158 lines)
+- **Configuration reference**: Detailed documentation for all options
+- **Cleaning profile guide**: How to create custom profiles for new site types
+- **Security policy**: Vulnerability management and reporting
+
+### 🔧 Configuration Updates
+
+New configuration options available:
+
+```yaml
+crawling:
+  strategy: "bfs"              # bfs, dfs, or best_first
+  max_pages: 500               # Limit total pages crawled
+  streaming: false             # Enable streaming mode
+  keywords: []                 # For best_first strategy
+  keyword_weight: 0.7          # Relevance scoring
+
+content_filtering:             # Stage 1: HTML filtering
+  enabled: false
+  excluded_tags: [nav, footer, aside]
+  exclude_external_links: false
+  min_word_threshold: 50
+
+markdown_cleaning:             # Stage 3: Profile cleaning
+  profile: "mediawiki"         # none, mediawiki, fandomwiki, maxroll
+```
+
+### 🎯 What's Next
+
+This v1.0.0 release establishes a stable foundation. Future releases will focus on:
+- Additional cleaning profiles for more site types
+- Web UI for configuration management
+- Enhanced monitoring and metrics
+- Performance optimizations
+
+### 📦 Installation
+
+```bash
+# Docker (recommended)
+docker compose up -d
+
+# Or via pip (when published to PyPI)
+pip install web-to-openwebui
+```
+
+See [README.md](README.md) for complete installation and usage instructions.
+
+### 🙏 Acknowledgments
+
+Thank you to the crawl4ai team for their excellent crawling library, and to the OpenWebUI community for building an amazing RAG platform.
+
+---
+
+## [0.9.0] - 2025-11-15
+
+Pre-release development version. Initial implementation of core features before production hardening.

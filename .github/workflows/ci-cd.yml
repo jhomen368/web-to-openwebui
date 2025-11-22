@@ -143,8 +143,7 @@ jobs:
           dockerfile: Dockerfile
           failure-threshold: error
 
-      # STRATEGY 1: Single-arch build for validation (PRs & Main)
-      # Skips on tags to avoid duplicate build
+      # Build for validation (PRs & Main - with security scan)
       - name: Build Docker image (Validation)
         if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         uses: docker/build-push-action@v5
@@ -157,23 +156,9 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64
 
-      # STRATEGY 2A: Pre-flight build for security scan (Tags only)
-      # Build single-arch, load locally for scanning BEFORE multi-arch push
-      - name: Build single-arch for security scan (Release Pre-flight)
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: false
-          load: true  # Load to local docker daemon for scanning
-          tags: web-to-openwebui:release-test
-          cache-from: type=gha
-          platforms: linux/amd64
-
-      # SECURITY SCANNING
-      # Scan local images BEFORE pushing (Main & Tags)
+      # SECURITY SCANNING (Main Branch Only)
+      # Tag releases skip security scanning - only scanned weekly and on main branch
       
-      # Scan Local Image (Main Branch)
       - name: Security Scan (Main Branch)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: aquasecurity/trivy-action@0.33.1
@@ -187,43 +172,27 @@ jobs:
           exit-code: '1'  # BLOCK on CRITICAL
           ignore-unfixed: true
 
-      # Scan Local Image (Release Pre-flight)
-      - name: Security Scan (Release Pre-flight)
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: aquasecurity/trivy-action@0.33.1
-        with:
-          image-ref: web-to-openwebui:release-test
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          scanners: 'vuln'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-          limit-severities-for-sarif: true
-          exit-code: '0'
-          ignore-unfixed: true
-
-      # Upload Results (Main & Tags)
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v')
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         continue-on-error: true
         with:
           sarif_file: 'trivy-results.sarif'
           category: trivy
 
-      # Console Summary (Main & Tags)
       - name: Security Scan Summary
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v')
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: aquasecurity/trivy-action@0.33.1
         with:
-          image-ref: ${{ startsWith(github.ref, 'refs/tags/v') && 'web-to-openwebui:release-test' || 'web-to-openwebui:test' }}
+          image-ref: web-to-openwebui:test
           format: 'table'
           scanners: 'vuln'
           exit-code: '0'  # Non-blocking summary
           severity: 'CRITICAL,HIGH,MEDIUM'
           ignore-unfixed: true
 
-      # STRATEGY 2B: Multi-arch build & push (Tags only)
-      # Only runs if security scan passed
+      # Multi-arch build & push (Tags only - NO security scan)
+      # Security is handled by weekly scheduled scans and main branch scans
       - name: Build and push multi-arch (Release)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: docker/build-push-action@v5
@@ -259,19 +228,35 @@ jobs:
         id: extract_notes
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
-          # Use awk to find the version block and print until the next block or EOF
-          awk -v ver="## [$VERSION]" '
-            $0 ~ ver { in_block=1; next }
-            /^## \[/ { in_block=0 }
+          
+          # Extract the specific version section from CHANGELOG.md
+          # Finds "## [VERSION]" and prints until next "## [" or EOF
+          awk -v ver="$VERSION" '
+            BEGIN { in_block=0 }
+            $0 ~ "^## \\[" ver "\\]" { in_block=1; next }
+            /^## \[/ { if (in_block) exit }
             in_block { print }
           ' CHANGELOG.md > release_notes.md
           
           # Check if release_notes.md is empty or only whitespace
           if [ ! -s release_notes.md ] || ! grep -q "[^[:space:]]" release_notes.md; then
-            echo "No changelog entry found for v$VERSION. Using default notes."
-            echo "See commit history for detailed changes." > release_notes.md
+            echo "⚠️  No changelog entry found for v$VERSION in CHANGELOG.md"
+            echo "Using default release notes."
+            cat > release_notes.md << 'EOF'
+          ## Changes
+          
+          See commit history for detailed changes.
+          
+          For changelog entries, please ensure CHANGELOG.md contains a section:
+          ```
+          ## [$VERSION] - YYYY-MM-DD
+          
+          ### Added/Changed/Fixed
+          - Your changes here
+          ```
+          EOF
           else
-            echo "Successfully extracted release notes for v$VERSION"
+            echo "✅ Successfully extracted release notes for v$VERSION"
           fi
 
       - name: Create Release
