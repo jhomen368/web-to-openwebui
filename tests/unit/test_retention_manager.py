@@ -8,7 +8,9 @@ Tests for:
 - Status reporting and recommendations
 """
 
+import shutil
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -94,10 +96,54 @@ class TestRetentionPolicies:
         # Get initial count
         initial_dirs = manager.get_scrape_directories()
 
-        # Run dry-run (should not delete)
-        # In real implementation, dry_run would preview deletions
-        assert site_dir.exists()
-        assert len(initial_dirs) == 3
+        # Run dry-run
+        result = manager.apply_retention(dry_run=True)
+
+        # Verify result structure
+        assert result["action"] == "dry_run"
+        assert result["kept"] == 1
+        assert result["deleted"] == 2
+        assert len(result["deleted_timestamps"]) == 2
+        assert "2025-11-20_01-00-00" in result["deleted_timestamps"]
+        assert "2025-11-20_02-00-00" in result["deleted_timestamps"]
+
+        # Verify nothing was actually deleted
+        current_dirs = manager.get_scrape_directories()
+        assert len(current_dirs) == 3
+        assert len(current_dirs) == len(initial_dirs)
+
+    def test_apply_retention_actual_deletion(self, tmp_outputs_dir: Path):
+        """Test actual deletion of old backups."""
+        site_name = "test_wiki"
+
+        timestamps = [
+            "2025-11-20_01-00-00",  # Oldest
+            "2025-11-20_02-00-00",
+            "2025-11-20_03-00-00",  # Newest
+        ]
+
+        for ts in timestamps:
+            create_test_scrape_directory(tmp_outputs_dir, site_name, ts, 3)
+
+        site_dir = tmp_outputs_dir / site_name
+        manager = RetentionManager(site_dir, keep_backups=1)
+
+        # Run actual retention
+        result = manager.apply_retention(dry_run=False)
+
+        # Verify result
+        assert result["action"] == "cleaned"
+        assert result["kept"] == 1
+        assert result["deleted"] == 2
+
+        # Verify files were deleted
+        current_dirs = manager.get_scrape_directories()
+        assert len(current_dirs) == 1
+        assert current_dirs[0].name == "2025-11-20_03-00-00"  # Only newest remains
+
+        # Verify old directories are gone
+        assert not (site_dir / "2025-11-20_01-00-00").exists()
+        assert not (site_dir / "2025-11-20_02-00-00").exists()
 
     def test_apply_retention_protect_current(self, tmp_outputs_dir: Path):
         """Test that current/ is never deleted."""
@@ -112,7 +158,10 @@ class TestRetentionPolicies:
             create_test_scrape_directory(tmp_outputs_dir, site_name, ts, 2)
 
         site_dir = tmp_outputs_dir / site_name
-        RetentionManager(site_dir, keep_backups=1)
+        manager = RetentionManager(site_dir, keep_backups=1)
+
+        # Apply retention
+        manager.apply_retention(dry_run=False)
 
         # current/ should always exist
         current_dir = tmp_outputs_dir / site_name / "current"
@@ -145,10 +194,41 @@ class TestRetentionPolicies:
         save_json_file(current_dir / "metadata.json", current_meta)
 
         site_dir = tmp_outputs_dir / site_name
-        RetentionManager(site_dir, keep_backups=1)
+        # Keep only 1 backup. Normally this would be the newest (04-00-00).
+        # But 03-00-00 is the source, so it must be protected.
+        manager = RetentionManager(site_dir, keep_backups=1)
 
-        # Source should still exist
+        result = manager.apply_retention(dry_run=False)
+
+        # Should keep 2: newest + source
+        # Or if logic replaces oldest kept with source, it might keep 1.
+        # Let's check implementation:
+        # It removes oldest kept to make room for source if needed.
+        # Here: to_keep initially [04], to_delete [03, 01]
+        # Source is 03. It's in to_delete.
+        # It removes 03 from to_delete.
+        # It checks if len(to_keep) >= keep_backups (1 >= 1). Yes.
+        # Oldest kept is 04. It's not source.
+        # Removes 04 from to_keep, adds to to_delete.
+        # Adds 03 to to_keep.
+        # So result: Keep 03 (source), Delete 04 and 01.
+
+        # Wait, logic check:
+        # if len(to_keep) >= self.keep_backups and self.keep_backups > 0:
+        #     oldest_kept = to_keep[-1]
+        #     if oldest_kept != current_source_dir:
+        #         to_keep.remove(oldest_kept)
+        #         to_delete.append(oldest_kept)
+
+        # So it prioritizes source over newest if count is limited?
+        # That seems to be the logic. Let's verify.
+
         assert source_dir.exists()
+        assert result["kept"] == 1
+        assert source_timestamp in result["kept_timestamps"]
+
+        # Verify 04 was deleted (sacrificed for source)
+        assert not (site_dir / "2025-11-20_04-00-00").exists()
 
     def test_apply_retention_zero_backups(self, tmp_outputs_dir: Path):
         """Test with keep_backups=0 (only current)."""
@@ -167,11 +247,37 @@ class TestRetentionPolicies:
             create_test_scrape_directory(tmp_outputs_dir, site_name, ts, 2)
 
         site_dir = tmp_outputs_dir / site_name
-        RetentionManager(site_dir, keep_backups=0)
+        manager = RetentionManager(site_dir, keep_backups=0)
+
+        result = manager.apply_retention(dry_run=False)
+
+        # Should delete all backups
+        assert result["kept"] == 0
+        assert result["deleted"] == 3
 
         # current/ should exist
         current_dir = tmp_outputs_dir / site_name / "current"
         assert current_dir.exists()
+
+        # All backups gone
+        assert len(manager.get_scrape_directories()) == 0
+
+    def test_apply_retention_within_threshold(self, tmp_outputs_dir: Path):
+        """Test no action when backups are within threshold."""
+        site_name = "test_wiki"
+
+        timestamps = ["2025-11-20_01-00-00", "2025-11-20_02-00-00"]
+        for ts in timestamps:
+            create_test_scrape_directory(tmp_outputs_dir, site_name, ts, 2)
+
+        site_dir = tmp_outputs_dir / site_name
+        manager = RetentionManager(site_dir, keep_backups=5)
+
+        result = manager.apply_retention(dry_run=False)
+
+        assert result["action"] == "none"
+        assert result["deleted"] == 0
+        assert len(manager.get_scrape_directories()) == 2
 
 
 @pytest.mark.unit
@@ -195,6 +301,27 @@ class TestRetentionStatusAndReporting:
 
         # Should have status dictionary
         assert isinstance(status, dict)
+        assert status["total_backups"] == 3
+        assert status["keep_backups"] == 2
+        assert status["will_delete"] == 1
+        assert status["status"] == "needs_cleanup"
+        assert "Run cleanup" in status["recommendation"]
+
+    def test_get_retention_status_clean(self, tmp_outputs_dir: Path):
+        """Test status when no cleanup is needed."""
+        site_name = "test_wiki"
+
+        create_test_scrape_directory(tmp_outputs_dir, site_name, "2025-11-20_01-00-00", 2)
+
+        site_dir = tmp_outputs_dir / site_name
+        manager = RetentionManager(site_dir, keep_backups=2)
+
+        status = manager.get_retention_status()
+
+        assert status["total_backups"] == 1
+        assert status["will_delete"] == 0
+        assert status["status"] == "clean"
+        assert "No cleanup needed" in status["recommendation"]
 
     def test_get_scrape_directories(self, tmp_outputs_dir: Path):
         """Test listing scrape directories."""
@@ -241,6 +368,107 @@ class TestRetentionStatusAndReporting:
 
         # May be None if metadata structure differs
         assert source_ts == source_timestamp or source_ts is None
+
+    def test_get_current_source_missing_metadata_file(self, tmp_outputs_dir: Path):
+        """Test get_current_source when metadata.json is missing."""
+        site_name = "test_wiki"
+
+        # Create current/ but no metadata.json
+        current_dir = tmp_outputs_dir / site_name / "current"
+        current_dir.mkdir(parents=True)
+
+        site_dir = tmp_outputs_dir / site_name
+        manager = RetentionManager(site_dir, keep_backups=2)
+
+        assert manager.get_current_source() is None
+
+    def test_get_current_source_exception(self, tmp_outputs_dir: Path):
+        """Test get_current_source handles exceptions."""
+        site_name = "test_wiki"
+        create_current_directory(tmp_outputs_dir, site_name, 3)
+
+        site_dir = tmp_outputs_dir / site_name
+        manager = RetentionManager(site_dir, keep_backups=2)
+
+        # Mock open to raise exception
+        with patch("builtins.open", side_effect=PermissionError("Access denied")):
+            assert manager.get_current_source() is None
+
+    def test_apply_retention_deletion_error(self, tmp_outputs_dir: Path):
+        """Test apply_retention handles deletion errors gracefully."""
+        site_name = "test_wiki"
+
+        # Create backups to delete
+        timestamps = ["2025-11-20_01-00-00", "2025-11-20_02-00-00"]
+        for ts in timestamps:
+            create_test_scrape_directory(tmp_outputs_dir, site_name, ts, 2)
+
+        site_dir = tmp_outputs_dir / site_name
+        manager = RetentionManager(site_dir, keep_backups=0)
+
+        # Mock shutil.rmtree to raise exception for the first directory
+        original_rmtree = shutil.rmtree
+
+        def side_effect(path, *args, **kwargs):
+            if "01-00-00" in str(path):
+                raise PermissionError("Access denied")
+            return original_rmtree(path, *args, **kwargs)
+
+        with patch("shutil.rmtree", side_effect=side_effect):
+            result = manager.apply_retention(dry_run=False)
+
+        # Should still report as deleted in summary (intent was deletion)
+        # Or maybe implementation counts it?
+        # Implementation:
+        # try: shutil.rmtree... logger.info... except: logger.error... continue
+        # deleted.append(scrape_dir.name) is OUTSIDE the try/except block?
+        # Let's check the code.
+        # Lines 148-156:
+        # for scrape_dir in to_delete:
+        #     if not dry_run:
+        #         try: ... except: continue
+        #     deleted.append(scrape_dir.name)
+        # Wait, if exception occurs, it hits `continue`, so `deleted.append` is SKIPPED.
+        # So result["deleted"] should be 1 (the successful one).
+
+        assert result["deleted"] == 1
+        assert "2025-11-20_02-00-00" in result["deleted_timestamps"]
+        assert "2025-11-20_01-00-00" not in result["deleted_timestamps"]
+
+        # Verify file existence
+        assert (site_dir / "2025-11-20_01-00-00").exists()  # Failed to delete
+        assert not (site_dir / "2025-11-20_02-00-00").exists()  # Deleted
+
+    def test_get_retention_status_size_error(self, tmp_outputs_dir: Path):
+        """Test get_retention_status handles size calculation errors."""
+        site_name = "test_wiki"
+        create_test_scrape_directory(tmp_outputs_dir, site_name, "2025-11-20_01-00-00", 2)
+
+        site_dir = tmp_outputs_dir / site_name
+        manager = RetentionManager(site_dir, keep_backups=2)
+
+        # Let's try patching Path.stat but only raising for specific path
+        original_stat = Path.stat
+
+        def side_effect(self, *args, **kwargs):
+            # Raise for any file inside the content directory
+            # This avoids raising for the scrape directory itself (checked by is_dir)
+            if "content" in str(self):
+                raise PermissionError("Access denied")
+            return original_stat(self, *args, **kwargs)
+
+        with (
+            patch("pathlib.Path.stat", side_effect=side_effect, autospec=True),
+            patch("webowui.storage.retention_manager.logger") as mock_logger,
+        ):
+            status = manager.get_retention_status()
+
+            # Should have logged a warning
+            assert mock_logger.warning.called
+            assert "Failed to calculate size" in mock_logger.warning.call_args[0][0]
+
+        # Should return status with 0 size (since the only dir failed)
+        assert status["total_size_mb"] == 0
 
 
 @pytest.mark.unit
@@ -338,6 +566,37 @@ class TestRetentionEdgeCases:
 
         # Real directory should be found
         assert len(scrape_dirs) >= 1
+
+    def test_retention_site_dir_not_exists(self, tmp_outputs_dir: Path):
+        """Test behavior when site directory does not exist."""
+        site_name = "non_existent_wiki"
+        site_dir = tmp_outputs_dir / site_name
+
+        manager = RetentionManager(site_dir, keep_backups=2)
+        scrape_dirs = manager.get_scrape_directories()
+
+        assert len(scrape_dirs) == 0
+
+    def test_retention_invalid_dir_names(self, tmp_outputs_dir: Path):
+        """Test that invalid directory names are ignored."""
+        site_name = "test_wiki"
+        site_dir = tmp_outputs_dir / site_name
+        site_dir.mkdir(parents=True)
+
+        # Valid timestamp
+        create_test_scrape_directory(tmp_outputs_dir, site_name, "2025-11-20_01-00-00", 2)
+
+        # Invalid names
+        (site_dir / "not_a_timestamp").mkdir()
+        (site_dir / "2025-11-20").mkdir()  # Missing time
+        (site_dir / "2025-11-20_01-00").mkdir()  # Incomplete time
+
+        manager = RetentionManager(site_dir, keep_backups=2)
+        scrape_dirs = manager.get_scrape_directories()
+
+        # Should only find the one valid timestamp
+        assert len(scrape_dirs) == 1
+        assert scrape_dirs[0].name == "2025-11-20_01-00-00"
 
 
 @pytest.mark.unit

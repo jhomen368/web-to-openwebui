@@ -6,6 +6,62 @@ This directory contains content cleaning profiles that transform scraped content
 
 Cleaning profiles remove noise (navigation, footers, citations) from scraped content before it's uploaded to OpenWebUI. This ensures embeddings focus on actual content rather than boilerplate text.
 
+## Content Processing Pipeline
+
+Content goes through a multi-stage pipeline for optimal quality:
+
+### Stage 1: HTML Filtering (html_filtering)
+**When:** Before markdown conversion
+**Where:** Configured in `html_filtering` section of site config
+**Capabilities:**
+- Remove HTML elements by tag name (nav, footer, aside, header)
+- Filter external links and social media links
+- Remove short content blocks (word count threshold)
+- **Limitation:** Cannot use CSS selectors/classes - tag names only
+
+**Configuration:**
+```yaml
+html_filtering:
+  # Basic filters (always active)
+  excluded_tags: [nav, footer, aside, header]
+  exclude_external_links: true
+  min_block_words: 10
+
+  # Heuristic pruning (optional, aggressive)
+  pruning:
+    enabled: false
+```
+
+### Stage 2: Markdown Cleaning (markdown_cleaning)
+**When:** After markdown generation
+**Where:** Configured in `markdown_cleaning` section of site config
+**Capabilities:**
+- Site-specific pattern removal (MediaWiki categories, Fandom ads, etc.)
+- Complex regex-based cleaning
+- Markdown structure manipulation
+- Context-aware filtering
+
+**Configuration:**
+```yaml
+markdown_cleaning:
+  profile: "mediawiki"  # or fandomwiki, maxroll, none, custom
+  config:
+    remove_infoboxes: true
+    # ... other profile-specific options
+```
+
+### Division of Labor
+
+| Filtering Type | Stage 1 (HTML) | Stage 2 (Markdown) |
+|----------------|----------------|--------------------|
+| HTML tags | ✅ (nav, footer, aside) | ❌ |
+| CSS classes/IDs | ❌ (not supported) | ✅ (via regex patterns) |
+| Generic boilerplate | ✅ | ❌ |
+| Site-specific patterns | ❌ | ✅ |
+| Markdown structures | ❌ | ✅ |
+
+**Best Practice:** Use Stage 1 for generic HTML cleanup, Stage 2 for everything else.
+
 ## Available Built-in Profiles
 
 ### `none` (Default)
@@ -19,7 +75,7 @@ Cleaning profiles remove noise (navigation, footers, citations) from scraped con
 - **Use Case**: Wikipedia, wiki.js, and other MediaWiki installations
 - **Configuration**:
   ```yaml
-  cleaning:
+  markdown_cleaning:
     profile: "mediawiki"
     config:
       filter_dead_links: true      # Remove links to non-existent pages
@@ -95,14 +151,14 @@ Cleaning profiles remove noise (navigation, footers, citations) from scraped con
 
 **Simple Configuration (Recommended):**
 ```yaml
-cleaning:
+markdown_cleaning:
   profile: "fandomwiki"
   # All defaults active: MediaWiki cleaning + Fandom cleaning
 ```
 
 **Override Specific Options:**
 ```yaml
-cleaning:
+markdown_cleaning:
   profile: "fandomwiki"
   config:
     # ----- Fandom-Specific Options (5) -----
@@ -129,12 +185,21 @@ cleaning:
 - **Use Case**: Maxroll.gg game guides and wikis
 - **Configuration**:
   ```yaml
-  cleaning:
+  markdown_cleaning:
     profile: "maxroll"
     config:
       remove_nav: true             # Remove global navigation and sidebar
       remove_footer: true          # Remove footer content
   ```
+
+## Example Configurations
+
+See the example templates in `webowui/config/examples/` for production-ready configurations:
+- `mediawiki.yml.example` - Generic MediaWiki sites
+- `fandomwiki.yml.example` - Fandom-hosted wikis
+- `maxroll.yml.example` - Gaming guide sites
+
+These templates include optimal settings from real-world testing and comprehensive documentation.
 
 **Before/After Example:**
 
@@ -275,7 +340,7 @@ cleaning:
 Add to your site's YAML file:
 
 ```yaml
-cleaning:
+markdown_cleaning:
   # Profile name (must match *_profile.py filename without "_profile")
   profile: "mediawiki"
 
@@ -285,7 +350,7 @@ cleaning:
     remove_citations: true
 ```
 
-If no `cleaning` section exists, defaults to `"none"` profile (no cleaning).
+If no `markdown_cleaning` section exists, defaults to `"none"` profile (no cleaning).
 
 ## Tips for Writing Profiles
 

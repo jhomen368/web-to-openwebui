@@ -2,16 +2,22 @@
 Main web crawler using crawl4ai.
 """
 
-import asyncio
 import logging
+import math
 from datetime import datetime
 
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
+from crawl4ai.deep_crawling import (
+    BestFirstCrawlingStrategy,
+    BFSDeepCrawlStrategy,
+    DFSDeepCrawlStrategy,
+)
+from crawl4ai.deep_crawling.filters import DomainFilter, FilterChain, URLPatternFilter
+from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer
 from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 
 from ..config import SiteConfig
-from .strategies import CrawlStrategy, get_strategy
 
 logger = logging.getLogger(__name__)
 
@@ -40,18 +46,17 @@ class WikiCrawler:
 
     def __init__(self, site_config: SiteConfig):
         self.config = site_config
-        self.strategy: CrawlStrategy = get_strategy(site_config)
         self.results: list[CrawlResult] = []
         self.total_pages_crawled = 0
         self.total_pages_failed = 0
 
     async def crawl(self, progress_callback=None) -> list[CrawlResult]:
-        """Main crawl method."""
+        """Main crawl method using crawl4ai deep crawling."""
         logger.info(f"Starting crawl for {self.config.display_name}")
-        logger.info(f"Strategy: {self.config.strategy_type}, Max depth: {self.config.max_depth}")
+        logger.info(f"Strategy: {self.config.crawl_strategy}, Max depth: {self.config.max_depth}")
 
-        # Initialize queue with start URLs
-        url_queue = [(url, 0) for url in self.config.start_urls]
+        strategy = self._create_deep_crawl_strategy()
+        config = self._create_crawler_config(strategy)
 
         async with AsyncWebCrawler(verbose=False, magic=True) as crawler:
             with Progress(
@@ -62,108 +67,225 @@ class WikiCrawler:
             ) as progress:
                 task = progress.add_task(f"Crawling {self.config.display_name}...", total=None)
 
-                while url_queue:
-                    current_url, depth = url_queue.pop(0)
+                # Use streaming if configured (defaulting to False for now until config update)
+                use_streaming = getattr(self.config, "use_streaming", False)
 
-                    # Skip if already visited
-                    if current_url in self.strategy.visited_urls:
-                        continue
+                if use_streaming:
+                    async for result in crawler.arun(url=self.config.start_urls[0], config=config):
+                        crawl_result = self._convert_result(result)
+                        self.results.append(crawl_result)
 
-                    progress.update(
-                        task,
-                        description=f"Crawling (depth {depth}): {self._shorten_url(current_url)}",
-                    )
+                        if crawl_result.success:
+                            self.total_pages_crawled += 1
+                            logger.info(
+                                f"✓ Crawled: {crawl_result.url} ({len(crawl_result.markdown)} chars)"
+                            )
+                        else:
+                            self.total_pages_failed += 1
+                            logger.error(f"✗ Failed: {crawl_result.url} - {crawl_result.error}")
 
-                    # Crawl the page
-                    result = await self._crawl_page(crawler, current_url, depth)
+                        progress.update(
+                            task,
+                            description=f"Crawled: {self.total_pages_crawled} pages",
+                            advance=1,
+                        )
 
-                    if result.success:
-                        self.results.append(result)
-                        self.total_pages_crawled += 1
-                        self.strategy.visited_urls.add(current_url)
+                        if progress_callback:
+                            progress_callback(self.total_pages_crawled, self.total_pages_failed)
+                else:
+                    # Batch mode
+                    raw_results = await crawler.arun(url=self.config.start_urls[0], config=config)
 
-                        # Add new URLs to queue
-                        new_urls = self.strategy.get_next_urls(current_url, result.links, depth)
-                        url_queue.extend(new_urls)
+                    for result in raw_results:
+                        crawl_result = self._convert_result(result)
+                        self.results.append(crawl_result)
 
-                        logger.info(f"✓ Crawled: {current_url} ({len(result.markdown)} chars)")
-                    else:
-                        self.total_pages_failed += 1
-                        self.strategy.failed_urls.add(current_url)
-                        logger.error(f"✗ Failed: {current_url} - {result.error}")
+                        if crawl_result.success:
+                            self.total_pages_crawled += 1
+                            logger.info(
+                                f"✓ Crawled: {crawl_result.url} ({len(crawl_result.markdown)} chars)"
+                            )
+                        else:
+                            self.total_pages_failed += 1
+                            logger.error(f"✗ Failed: {crawl_result.url} - {crawl_result.error}")
 
-                    # Rate limiting
-                    await asyncio.sleep(self.config.delay_between_requests)
+                        progress.update(
+                            task,
+                            description=f"Crawled: {self.total_pages_crawled} pages",
+                            advance=1,
+                        )
 
-                    if progress_callback:
-                        progress_callback(self.total_pages_crawled, self.total_pages_failed)
+                        if progress_callback:
+                            progress_callback(self.total_pages_crawled, self.total_pages_failed)
 
         logger.info(
             f"Crawl complete: {self.total_pages_crawled} pages, {self.total_pages_failed} failures"
         )
         return self.results
 
-    async def _crawl_page(self, crawler: AsyncWebCrawler, url: str, depth: int) -> CrawlResult:
-        """Crawl a single page and extract content."""
-        try:
-            # Configure crawl with minimal settings to avoid CSS selector issues
-            config = CrawlerRunConfig(
-                cache_mode=CacheMode.BYPASS,
-                markdown_generator=DefaultMarkdownGenerator(
-                    options={
-                        "heading_style": self.config.markdown_options.get("heading_style", "atx"),
-                        "include_links": self.config.markdown_options.get("include_links", True),
-                    }
-                ),
-                word_count_threshold=self.config.min_content_length,
-                page_timeout=30000,  # 30 second timeout
-                # Removed excluded_tags to avoid CSS selector issues
+    def _create_deep_crawl_strategy(self):
+        """Create crawl4ai strategy from site config."""
+        # Build filter chain from config
+        filters = []
+        if self.config.follow_patterns:
+            filters.append(URLPatternFilter(patterns=self.config.follow_patterns))
+
+        if self.config.exclude_patterns:
+            # Note: URLPatternFilter doesn't support exclude patterns directly in the same way
+            # as our old strategy, but we can use it for positive matching.
+            pass
+
+        exclude_domains = getattr(self.config, "exclude_domains", [])
+        if exclude_domains:
+            filters.append(DomainFilter(blocked_domains=exclude_domains))
+
+        filter_chain = FilterChain(filters) if filters else None
+
+        # Map strategy type
+        strategy_type = self.config.crawl_strategy
+        if strategy_type in ["recursive", "selective", "depth_limited"]:
+            strategy_type = "bfs"  # Default to BFS for old types
+
+        strategy_map = {
+            "bfs": BFSDeepCrawlStrategy,
+            "dfs": DFSDeepCrawlStrategy,
+            "best_first": BestFirstCrawlingStrategy,
+        }
+
+        strategy_class = strategy_map.get(strategy_type, BFSDeepCrawlStrategy)
+
+        # Create instance
+        max_pages = getattr(self.config, "max_pages", None)
+        if max_pages is None:
+            max_pages = math.inf
+
+        if strategy_class == BestFirstCrawlingStrategy:
+            crawl_keywords = getattr(self.config, "crawl_keywords", [])
+            crawl_keyword_weight = getattr(self.config, "crawl_keyword_weight", 0.7)
+            scorer = KeywordRelevanceScorer(
+                keywords=crawl_keywords,
+                weight=crawl_keyword_weight,
+            )
+            return strategy_class(
+                max_depth=self.config.max_depth,
+                url_scorer=scorer,
+                filter_chain=filter_chain,
+                max_pages=max_pages,
+            )
+        else:
+            return strategy_class(
+                max_depth=self.config.max_depth,
+                include_external=False,
+                filter_chain=filter_chain,
+                max_pages=max_pages,
             )
 
-            # Perform crawl
-            result = await crawler.arun(url=url, config=config)
+    def _create_crawler_config(self, deep_crawl_strategy):
+        """Create CrawlerRunConfig from site config."""
+        # Get new config fields with defaults
+        use_streaming = getattr(self.config, "use_streaming", False)
+        excluded_tags = getattr(self.config, "excluded_tags", [])
+        # Ensure excluded_tags is a list of strings
+        if excluded_tags is None:
+            excluded_tags = []
+        elif isinstance(excluded_tags, str):
+            excluded_tags = [excluded_tags]
 
-            if not result.success:
-                return CrawlResult(url, False, error=result.error_message or "Unknown error")
+        exclude_external_links = getattr(self.config, "exclude_external_links", False)
+        exclude_social_media = getattr(self.config, "exclude_social_media", False)
 
-            # Extract content - updated to use new API
-            markdown = result.markdown.raw_markdown if result.markdown else ""
+        return CrawlerRunConfig(
+            deep_crawl_strategy=deep_crawl_strategy,
+            stream=use_streaming,
+            # Content filtering (Stage 1)
+            excluded_tags=excluded_tags,
+            exclude_external_links=exclude_external_links,
+            exclude_social_media_links=exclude_social_media,
+            word_count_threshold=getattr(self.config, "min_block_words", 10),
+            # Markdown generation
+            markdown_generator=self._create_markdown_generator(),
+            cache_mode=CacheMode.BYPASS,
+            page_timeout=30000,
+        )
 
-            # Filter by content length
-            if len(markdown) < self.config.min_content_length:
-                return CrawlResult(url, False, error="Content too short")
+    def _create_markdown_generator(self):
+        """Create markdown generator with optional content filter."""
+        from crawl4ai.content_filter_strategy import PruningContentFilter
 
-            if len(markdown) > self.config.max_content_length:
-                logger.warning(f"Content truncated for {url} (too long)")
-                markdown = markdown[: self.config.max_content_length]
+        pruning_enabled = getattr(self.config, "pruning_enabled", False)
+        pruning_threshold = getattr(self.config, "pruning_threshold", 0.6)
+        pruning_min_words = getattr(self.config, "pruning_min_words", 50)
 
-            # Extract links
-            links = self._extract_links(result.links) if hasattr(result, "links") else []
+        content_filter = None
+        if pruning_enabled:
+            content_filter = PruningContentFilter(
+                threshold=pruning_threshold, min_word_threshold=pruning_min_words
+            )
 
-            return CrawlResult(url, True, markdown=markdown, links=links)
+        return DefaultMarkdownGenerator(
+            content_source="cleaned_html",
+            content_filter=content_filter,
+            options=self.config.markdown_options,
+        )
 
-        except Exception as e:
-            logger.error(f"Error crawling {url}: {str(e)}")
-            return CrawlResult(url, False, error=str(e))
+    def _convert_result(self, crawl4ai_result) -> CrawlResult:
+        """Convert crawl4ai result to our CrawlResult format."""
+        if not crawl4ai_result.success:
+            return CrawlResult(
+                url=crawl4ai_result.url,
+                success=False,
+                markdown="",
+                links=[],
+                error=crawl4ai_result.error_message,
+            )
+
+        # Use fit_markdown if available (filtered), fallback to raw
+        markdown = (
+            crawl4ai_result.markdown.fit_markdown
+            if crawl4ai_result.markdown and crawl4ai_result.markdown.fit_markdown
+            else (crawl4ai_result.markdown.raw_markdown if crawl4ai_result.markdown else "")
+        )
+
+        # Apply page length filter
+        min_length = getattr(self.config, "min_page_length", 100)
+        max_length = getattr(self.config, "max_page_length", 500000)
+
+        error_message = crawl4ai_result.error_message
+        final_success = crawl4ai_result.success
+
+        if len(markdown) < min_length:
+            error_message = f"Content too short ({len(markdown)} chars < {min_length})"
+            final_success = False
+            markdown = ""  # Discard content
+        elif len(markdown) > max_length:
+            error_message = f"Content too long ({len(markdown)} chars > {max_length})"
+            final_success = False
+            markdown = ""  # Discard content
+
+        return CrawlResult(
+            url=crawl4ai_result.url,
+            success=final_success,
+            markdown=markdown,
+            links=self._extract_links(crawl4ai_result.links),
+            error=error_message,
+        )
 
     def _extract_links(self, links_dict: dict) -> list[str]:
-        """Extract and filter links from crawl result."""
+        """Extract links from crawl4ai links dictionary."""
+        extracted: list[str] = []
         if not links_dict:
-            return []
+            return extracted
 
-        internal_links = links_dict.get("internal", [])
-        links_dict.get("external", [])
+        # Process internal links
+        for link in links_dict.get("internal", []):
+            if isinstance(link, dict):
+                href = link.get("href")
+                if href:
+                    extracted.append(href)
+            elif isinstance(link, str):
+                extracted.append(link)
 
-        # For wikis, we typically want internal links
-        all_links = []
-
-        for link in internal_links:
-            url = link.get("href", "") if isinstance(link, dict) else str(link)
-
-            if url:
-                all_links.append(url)
-
-        return all_links
+        return extracted
 
     def _shorten_url(self, url: str, max_length: int = 60) -> str:
         """Shorten URL for display."""
@@ -176,6 +298,6 @@ class WikiCrawler:
         return {
             "total_crawled": self.total_pages_crawled,
             "total_failed": self.total_pages_failed,
-            "urls_visited": len(self.strategy.visited_urls),
-            "urls_failed": len(self.strategy.failed_urls),
+            "urls_visited": self.total_pages_crawled + self.total_pages_failed,
+            "urls_failed": self.total_pages_failed,
         }

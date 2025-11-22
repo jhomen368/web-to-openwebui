@@ -55,12 +55,12 @@ class TestSiteConfigBasics:
         config = SiteConfig(minimal_config, config_file)
 
         # Check defaults
-        assert config.strategy_type == "recursive"
+        assert config.crawl_strategy == "bfs"
         assert config.max_depth == 3
         assert config.requests_per_second == 2
         assert config.delay_between_requests == 0.5
-        assert config.min_content_length == 100
-        assert config.max_content_length == 500000
+        assert config.min_page_length == 100
+        assert config.max_page_length == 500000
         assert config.cleaning_profile_name == "none"
 
     def test_site_config_strategy_settings(self, tmp_config_dir: Path):
@@ -70,18 +70,20 @@ class TestSiteConfigBasics:
             "display_name": "Test",
             "base_url": "https://example.com",
             "start_urls": ["https://example.com"],
-            "strategy": {
-                "type": "depth_limited",
+            "crawling": {
+                "strategy": "dfs",
                 "max_depth": 5,
-                "follow_patterns": ["^https://example\\.com/.*"],
-                "exclude_patterns": [".*admin.*"],
+                "filters": {
+                    "follow_patterns": ["^https://example\\.com/.*"],
+                    "exclude_patterns": [".*admin.*"],
+                },
             },
         }
         config_file = tmp_config_dir / "sites" / "test.yaml"
 
         config = SiteConfig(config_dict, config_file)
 
-        assert config.strategy_type == "depth_limited"
+        assert config.crawl_strategy == "dfs"
         assert config.max_depth == 5
         assert config.follow_patterns == ["^https://example\\.com/.*"]
         assert config.exclude_patterns == [".*admin.*"]
@@ -93,7 +95,7 @@ class TestSiteConfigBasics:
             "display_name": "Test",
             "base_url": "https://example.com",
             "start_urls": ["https://example.com"],
-            "strategy": {
+            "crawling": {
                 "rate_limit": {
                     "requests_per_second": 1,
                     "delay_between_requests": 1.0,
@@ -116,9 +118,9 @@ class TestSiteConfigBasics:
             "display_name": "Test",
             "base_url": "https://example.com",
             "start_urls": ["https://example.com"],
-            "filters": {
-                "min_content_length": 500,
-                "max_content_length": 250000,
+            "result_filtering": {
+                "min_page_length": 500,
+                "max_page_length": 250000,
                 "filter_dead_links": True,
             },
         }
@@ -126,8 +128,8 @@ class TestSiteConfigBasics:
 
         config = SiteConfig(config_dict, config_file)
 
-        assert config.min_content_length == 500
-        assert config.max_content_length == 250000
+        assert config.min_page_length == 500
+        assert config.max_page_length == 250000
         assert config.filter_dead_links is True
 
     def test_site_config_cleaning_profile(self, tmp_config_dir: Path):
@@ -137,7 +139,7 @@ class TestSiteConfigBasics:
             "display_name": "Test",
             "base_url": "https://example.com",
             "start_urls": ["https://example.com"],
-            "cleaning": {
+            "markdown_cleaning": {
                 "profile": "mediawiki",
                 "config": {
                     "remove_infoboxes": True,
@@ -306,16 +308,17 @@ class TestSiteConfigValidation:
             "display_name": "Test",
             "base_url": "https://example.com",
             "start_urls": ["https://example.com"],
-            "strategy": {
-                "type": "invalid_strategy",
+            "crawling": {
+                "strategy": "invalid_strategy",
             },
         }
         config_file = tmp_config_dir / "sites" / "test.yaml"
+
         config = SiteConfig(config_dict, config_file)
 
         errors = config.validate()
 
-        assert any("invalid strategy type" in e.lower() for e in errors)
+        assert any("invalid crawl strategy" in e.lower() for e in errors)
 
 
 # ============================================================================

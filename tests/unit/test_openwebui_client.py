@@ -195,6 +195,93 @@ async def test_create_knowledge_failure(client, mock_session):
 
 
 # ============================================================================
+# Knowledge Discovery Tests
+# ============================================================================
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_find_knowledge_by_content_single_match(client, mock_session):
+    """Test finding knowledge base with single name match."""
+    # Setup list response
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.json.return_value = [{"id": "kb-1", "name": "Test KB"}]
+    mock_session.get.return_value.__aenter__.return_value = mock_response
+
+    result = await client.find_knowledge_by_content("site", "Test KB")
+
+    assert result == "kb-1"
+    mock_session.get.assert_called_once()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_find_knowledge_by_content_multiple_matches(client, mock_session):
+    """Test finding knowledge base with multiple name matches (content check)."""
+    # Setup list response
+    mock_list_response = AsyncMock()
+    mock_list_response.status = 200
+    mock_list_response.json.return_value = [
+        {"id": "kb-1", "name": "Test KB"},
+        {"id": "kb-2", "name": "Test KB"},
+    ]
+
+    # Setup content check responses
+    # KB-1: No files
+    mock_kb1_response = AsyncMock()
+    mock_kb1_response.status = 200
+    mock_kb1_response.json.return_value = {"files": []}
+
+    # KB-2: Has files
+    mock_kb2_response = AsyncMock()
+    mock_kb2_response.status = 200
+    mock_kb2_response.json.return_value = {
+        "files": [{"id": "file-1", "meta": {"name": "site/test.md"}}]
+    }
+
+    mock_session.get.return_value.__aenter__.side_effect = [
+        mock_list_response,
+        mock_kb1_response,
+        mock_kb2_response,
+    ]
+
+    result = await client.find_knowledge_by_content("site", "Test KB")
+
+    assert result == "kb-2"
+    assert mock_session.get.call_count == 3
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_find_knowledge_by_content_no_match(client, mock_session):
+    """Test finding knowledge base with no name matches."""
+    # Setup list response
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.json.return_value = []
+    mock_session.get.return_value.__aenter__.return_value = mock_response
+
+    result = await client.find_knowledge_by_content("site", "Test KB")
+
+    assert result is None
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_find_knowledge_by_content_api_error(client, mock_session):
+    """Test finding knowledge base with API error."""
+    # Setup list response
+    mock_response = AsyncMock()
+    mock_response.status = 500
+    mock_session.get.return_value.__aenter__.return_value = mock_response
+
+    result = await client.find_knowledge_by_content("site", "Test KB")
+
+    assert result is None
+
+
+# ============================================================================
 # File Upload Tests
 # ============================================================================
 
@@ -325,6 +412,63 @@ async def test_add_files_to_knowledge_batch_fallback(client, mock_session):
     assert result["success"] is True
     assert result["files_added"] == 2
     assert mock_session.post.call_count == 3  # 1 batch + 2 individual
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_add_files_to_knowledge_batch_exception(client, mock_session):
+    """Test batch add exception falls back to individual."""
+    # Setup mock responses
+    # First call (batch) raises exception
+    mock_session.post.return_value.__aenter__.side_effect = [
+        Exception("Network error"),
+        AsyncMock(status=200),  # Individual 1
+        AsyncMock(status=200),  # Individual 2
+    ]
+
+    result = await client.add_files_to_knowledge_batch("kb-123", ["file-1", "file-2"])
+
+    assert result["success"] is True
+    assert result["files_added"] == 2
+    assert mock_session.post.call_count == 3
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_add_files_individually_partial_success(client, mock_session):
+    """Test individual file addition with partial success."""
+    # Setup mock responses
+    mock_success = AsyncMock(status=200)
+    mock_failure = AsyncMock(status=500)
+    mock_failure.text.return_value = "Error"
+
+    mock_session.post.return_value.__aenter__.side_effect = [
+        mock_success,  # file-1
+        mock_failure,  # file-2
+    ]
+
+    result = await client._add_files_individually("kb-123", ["file-1", "file-2"])
+
+    assert result["success"] is True  # At least one succeeded
+    assert result["files_added"] == 1
+    assert result["files_failed"] == 1
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_add_files_individually_all_failures(client, mock_session):
+    """Test individual file addition with all failures."""
+    # Setup mock responses
+    mock_failure = AsyncMock(status=500)
+    mock_failure.text.return_value = "Error"
+
+    mock_session.post.return_value.__aenter__.return_value = mock_failure
+
+    result = await client._add_files_individually("kb-123", ["file-1", "file-2"])
+
+    assert result["success"] is False
+    assert result["files_added"] == 0
+    assert result["files_failed"] == 2
 
 
 @pytest.mark.unit
@@ -935,6 +1079,77 @@ async def test_match_and_reconcile_no_match(client, mock_session):
     assert len(result["unmatched_local"]) == 1
 
 
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_rebuild_state_inline_high_confidence(client, mock_session):
+    """Test state rebuild with high confidence match."""
+    local_metadata = {
+        "files": [{"url": "http://test.com/1", "filename": "test1.md", "checksum": "hash1"}]
+    }
+
+    # Mock match_and_reconcile success
+    with patch.object(client, "match_and_reconcile") as mock_match:
+        mock_match.return_value = {
+            "success": True,
+            "confidence": "high",
+            "matched_count": 1,
+            "total_local": 1,
+            "match_rate": 1.0,
+            "file_id_map": {"http://test.com/1": "file-1"},
+        }
+
+        # Mock get_knowledge_files for hash lookup
+        with patch.object(client, "get_knowledge_files") as mock_get_files:
+            mock_get_files.return_value = [
+                {"id": "file-1", "hash": "hash1", "decoded_filename": "site/test1.md"}
+            ]
+
+            result = await client._rebuild_state_inline("kb-1", "site", local_metadata)
+
+            assert result is not None
+            assert result["rebuild_confidence"] == "high"
+            assert result["files_uploaded"] == 1
+            assert len(result["files"]) == 1
+            assert result["files"][0]["file_id"] == "file-1"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_rebuild_state_inline_low_confidence_fail(client, mock_session):
+    """Test state rebuild fails when confidence is too low."""
+    local_metadata = {"files": []}
+
+    # Mock match_and_reconcile with low confidence
+    with patch.object(client, "match_and_reconcile") as mock_match:
+        mock_match.return_value = {
+            "success": True,
+            "confidence": "low",
+            "matched_count": 1,
+            "total_local": 2,
+        }
+
+        # Require medium confidence (default)
+        result = await client._rebuild_state_inline(
+            "kb-1", "site", local_metadata, min_confidence="medium"
+        )
+
+        assert result is None
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_rebuild_state_inline_match_failure(client, mock_session):
+    """Test state rebuild when matching fails."""
+    local_metadata = {"files": []}
+
+    with patch.object(client, "match_and_reconcile") as mock_match:
+        mock_match.return_value = {"success": False}
+
+        result = await client._rebuild_state_inline("kb-1", "site", local_metadata)
+
+        assert result is None
+
+
 # ============================================================================
 # State Health Tests
 # ============================================================================
@@ -1147,3 +1362,88 @@ async def test_upload_scrape_to_knowledge_upload_fail(client, mock_session, tmp_
 
     assert "error" in result
     assert result["error"] == "Failed to upload files"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_upload_scrape_to_knowledge_processing_timeout(client, mock_session, tmp_dir: Path):
+    """Test full upload with processing timeout."""
+    file_path = tmp_dir / "test.md"
+    file_path.write_text("# Test")
+
+    # Mock responses
+    # 1. Create KB
+    mock_create_kb = AsyncMock(status=200)
+    mock_create_kb.json.return_value = {"id": "kb-1", "name": "Test KB"}
+
+    # 2. Upload file
+    mock_upload = AsyncMock(status=200)
+    mock_upload.json.return_value = {"id": "file-1"}
+
+    # 3. Processing status (stuck in processing)
+    mock_status = AsyncMock(status=200)
+    mock_status.json.return_value = {"status": "processing"}
+
+    # 4. Add to KB (should still happen)
+    mock_add = AsyncMock(status=200)
+    mock_add.json.return_value = {"success": True}
+
+    # Configure side effects
+    mock_session.get.return_value.__aenter__.side_effect = [
+        AsyncMock(status=200, json=AsyncMock(return_value=[])),  # List KB
+        mock_status,  # Check status (repeated)
+    ]
+    mock_session.post.return_value.__aenter__.side_effect = [
+        mock_create_kb,
+        mock_upload,
+        mock_add,
+    ]
+
+    # Mock time and sleep to simulate timeout
+    with patch("asyncio.get_event_loop") as mock_loop:
+        mock_loop.return_value.time.side_effect = [0, 100]  # Immediate timeout
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            result = await client.upload_scrape_to_knowledge(
+                scrape_dir=tmp_dir, site_name="test-site", knowledge_name="Test KB"
+            )
+
+    assert result["success"] is True
+    assert result["files_uploaded"] == 1
+
+
+# ============================================================================
+# Error Handling Tests
+# ============================================================================
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_api_404_handling(client, mock_session):
+    """Test handling of 404 API errors."""
+    mock_response = AsyncMock(status=404)
+    mock_session.get.return_value.__aenter__.return_value = mock_response
+
+    # Should return None/False, not raise exception
+    assert await client.get_knowledge_files("kb-1") is None
+    assert await client.verify_file_exists("file-1") is False
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_api_500_handling(client, mock_session):
+    """Test handling of 500 API errors."""
+    mock_response = AsyncMock(status=500)
+    mock_response.text.return_value = "Internal Server Error"
+    mock_session.post.return_value.__aenter__.return_value = mock_response
+
+    # Should return None/False and log error
+    assert await client.create_knowledge("Test") is None
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_network_timeout_handling(client, mock_session):
+    """Test handling of network timeouts."""
+    mock_session.get.side_effect = Exception("Timeout")
+
+    assert await client.test_connection() is False

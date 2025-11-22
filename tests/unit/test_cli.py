@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -101,6 +102,28 @@ def test_scrape_command_all_sites(mock_scrape_site, runner, mock_app_config):
     assert "Scraping site: site1" in result.output
     assert "Scraping site: site2" in result.output
     assert mock_scrape_site.call_count == 2
+
+
+@patch("webowui.cli._scrape_site")
+def test_scrape_command_error_handling(mock_scrape_site, runner, mock_app_config):
+    """Test 'scrape' command error handling."""
+    # Test invalid site
+    mock_app_config.load_site_config.side_effect = FileNotFoundError("Config not found")
+    result = runner.invoke(cli, ["scrape", "--site", "invalid"])
+    assert result.exit_code == 0  # Should handle gracefully
+    assert "Error: Config not found" in result.output
+
+    # Test config validation error
+    mock_app_config.load_site_config.side_effect = None
+    mock_config = MagicMock(spec=SiteConfig)
+    mock_config.validate.return_value = ["Invalid URL"]
+    mock_app_config.load_site_config.return_value = mock_config
+
+    result = runner.invoke(cli, ["scrape", "--site", "site1"])
+    assert result.exit_code == 0
+    assert "Configuration errors:" in result.output
+    assert "Invalid URL" in result.output
+    mock_scrape_site.assert_not_called()
 
 
 def test_scrape_command_no_args(runner):
@@ -315,6 +338,64 @@ def test_upload_command_with_options(mock_upload_scrape, runner, mock_app_config
     assert args[5] == "kb2"
     assert args[6] is True  # keep_files
     assert args[7] is True  # cleanup_untracked
+
+
+@patch("webowui.cli._upload_scrape")
+def test_upload_command_incremental(mock_upload_scrape, runner, mock_app_config):
+    """Test 'upload' command with --incremental flag."""
+    mock_config = MagicMock(spec=SiteConfig)
+    mock_config.knowledge_id = "kb1"
+    mock_config.knowledge_name = "KB 1"
+    mock_config.knowledge_description = "Description"
+    mock_config.preserve_deleted_files = False
+    mock_config.cleanup_untracked = False
+    mock_app_config.load_site_config.return_value = mock_config
+    mock_app_config.validate_openwebui_config.return_value = []
+
+    result = runner.invoke(cli, ["upload", "--site", "site1", "--incremental"])
+
+    assert result.exit_code == 0
+    mock_upload_scrape.assert_called_once()
+    args = mock_upload_scrape.call_args[0]
+    assert args[2] is True  # incremental
+
+
+@patch("webowui.cli._upload_scrape")
+def test_upload_command_full(mock_upload_scrape, runner, mock_app_config):
+    """Test 'upload' command with --full flag."""
+    mock_config = MagicMock(spec=SiteConfig)
+    mock_config.knowledge_id = "kb1"
+    mock_config.knowledge_name = "KB 1"
+    mock_config.knowledge_description = "Description"
+    mock_config.preserve_deleted_files = False
+    mock_config.cleanup_untracked = False
+    mock_app_config.load_site_config.return_value = mock_config
+
+    result = runner.invoke(cli, ["upload", "--site", "site1", "--full"])
+
+    assert result.exit_code == 0
+    mock_upload_scrape.assert_called_once()
+    args = mock_upload_scrape.call_args[0]
+    assert args[2] is False  # incremental
+
+
+@patch("webowui.cli._upload_scrape")
+def test_upload_command_keep_files(mock_upload_scrape, runner, mock_app_config):
+    """Test 'upload' command with --keep-files flag."""
+    mock_config = MagicMock(spec=SiteConfig)
+    mock_config.knowledge_id = "kb1"
+    mock_config.knowledge_name = "KB 1"
+    mock_config.knowledge_description = "Description"
+    mock_config.preserve_deleted_files = False
+    mock_config.cleanup_untracked = False
+    mock_app_config.load_site_config.return_value = mock_config
+
+    result = runner.invoke(cli, ["upload", "--site", "site1", "--keep-files"])
+
+    assert result.exit_code == 0
+    mock_upload_scrape.assert_called_once()
+    args = mock_upload_scrape.call_args[0]
+    assert args[6] is True  # keep_files
 
 
 def test_upload_command_config_error(runner, mock_app_config):
@@ -545,6 +626,48 @@ def test_clean_command(mock_tracker_cls, runner, mock_app_config):
     mock_tracker.cleanup_old_scrapes.assert_called_with(5)
 
 
+@patch("webowui.cli.MetadataTracker")
+def test_clean_command_dry_run(mock_tracker_cls, runner, mock_app_config):
+    """Test 'clean' command with dry-run (simulated by checking output)."""
+    # Note: The clean command doesn't have a --dry-run flag in the current implementation
+    # It just prints what it's doing.
+    # But we can test that it correctly identifies scrapes to remove.
+    mock_app_config.list_sites.return_value = ["site1"]
+    mock_tracker = mock_tracker_cls.return_value
+    mock_tracker.get_all_scrapes.return_value = [{} for _ in range(6)]
+
+    result = runner.invoke(cli, ["clean", "--site", "site1", "--keep", "5"])
+
+    assert result.exit_code == 0
+    assert "Removing 1 old scrapes" in result.output
+    mock_tracker.cleanup_old_scrapes.assert_called_with(5)
+
+
+@patch("webowui.utils.reclean.reclean_directory")
+@patch("webowui.cli.CurrentDirectoryManager")
+def test_reclean_command(mock_cdm_cls, mock_reclean_dir, runner, mock_app_config):
+    """Test 'reclean' command."""
+    mock_config = MagicMock(spec=SiteConfig)
+    mock_config.cleaning_profile_name = "profile1"
+    mock_app_config.load_site_config.return_value = mock_config
+
+    mock_cdm = mock_cdm_cls.return_value
+    mock_cdm.get_current_state.return_value = {"source_timestamp": "t1"}
+    mock_cdm.content_dir = Path("/path/to/content")
+
+    # We need to patch where it is imported in cli.py, but it is imported inside the function.
+    # So we patch the module where it is defined.
+    # Wait, if it is imported inside the function, we should patch 'webowui.utils.reclean.reclean_directory'
+    # and since we are running the cli command which imports it, that should work.
+
+    result = runner.invoke(cli, ["reclean", "--site", "site1"])
+
+    assert result.exit_code == 0
+    assert "Re-cleaning content for site1" in result.output
+    assert "Profile: profile1" in result.output
+    mock_reclean_dir.assert_called_with(Path("/path/to/content"), "profile1")
+
+
 @patch("webowui.cli.CurrentDirectoryManager")
 def test_show_current_command(mock_cdm_cls, runner, mock_app_config):
     """Test 'show-current' command."""
@@ -721,6 +844,80 @@ def test_rebuild_state_command_real_async(
 @patch("webowui.cli.CurrentDirectoryManager")
 @patch("webowui.cli.OpenWebUIClient")
 @patch("webowui.cli.StateManager")
+def test_check_state_command(
+    mock_state_mgr_cls, mock_client_cls, mock_cdm_cls, runner, mock_app_config
+):
+    """Test 'check-state' command."""
+    mock_app_config.load_site_config.return_value = MagicMock(
+        display_name="Site 1", knowledge_id="kb1"
+    )
+    mock_app_config.validate_openwebui_config.return_value = []
+    mock_app_config.openwebui_api_key = "key"
+
+    mock_cdm = mock_cdm_cls.return_value
+    mock_cdm.get_upload_status.return_value = {"knowledge_id": "kb1"}
+
+    mock_client = mock_client_cls.return_value
+    mock_client.test_connection = AsyncMock(return_value=True)
+
+    mock_state_mgr = mock_state_mgr_cls.return_value
+    mock_state_mgr.check_health = AsyncMock(
+        return_value={
+            "status": "healthy",
+            "local_file_count": 10,
+            "remote_file_count": 10,
+            "issues": [],
+            "recommendation": None,
+        }
+    )
+
+    result = runner.invoke(cli, ["check-state", "--site", "site1"])
+
+    assert result.exit_code == 0
+    assert "Checking state health for site1" in result.output
+    assert "Status: HEALTHY" in result.output
+    assert "Local files: 10" in result.output
+    assert "Remote files: 10" in result.output
+
+
+@patch("webowui.cli.CurrentDirectoryManager")
+@patch("webowui.cli.OpenWebUIClient")
+@patch("webowui.cli.StateManager")
+def test_sync_command_with_fix(
+    mock_state_mgr_cls, mock_client_cls, mock_cdm_cls, runner, mock_app_config
+):
+    """Test 'sync' command with --fix flag."""
+    mock_app_config.load_site_config.return_value = MagicMock()
+    mock_app_config.openwebui_api_key = "key"
+
+    mock_client = mock_client_cls.return_value
+    mock_client.test_connection = AsyncMock(return_value=True)
+
+    mock_state_mgr = mock_state_mgr_cls.return_value
+    mock_state_mgr.sync_state = AsyncMock(
+        return_value={
+            "success": True,
+            "local_count": 10,
+            "remote_count": 10,
+            "in_sync_count": 9,
+            "missing_remote": {"file1"},
+            "extra_remote": set(),
+            "local_file_map": {"file1": {"filename": "f1"}},
+            "remote_files": [],
+            "fixed_count": 1,
+        }
+    )
+
+    result = runner.invoke(cli, ["sync", "--site", "site1", "--fix"])
+
+    assert result.exit_code == 0
+    assert "Files in local state but missing from OpenWebUI: 1" in result.output
+    assert "Fixed: Removed 1 files" in result.output
+
+
+@patch("webowui.cli.CurrentDirectoryManager")
+@patch("webowui.cli.OpenWebUIClient")
+@patch("webowui.cli.StateManager")
 def test_sync_command(mock_state_mgr_cls, mock_client_cls, mock_cdm_cls, runner, mock_app_config):
     """Test 'sync' command."""
     mock_app_config.load_site_config.return_value = MagicMock()
@@ -820,6 +1017,77 @@ def test_rollback_command_perform(mock_cdm_cls, mock_retention_mgr_cls, runner, 
     assert result.exit_code == 0
     assert "Rolling back to 2023-01-01" in result.output
     assert "Rollback successful" in result.output
+    mock_cdm.rebuild_from_timestamp.assert_called_with("2023-01-01")
+
+
+@patch("webowui.cli.RetentionManager")
+@patch("webowui.cli.CurrentDirectoryManager")
+def test_rollback_command_interactive(
+    mock_cdm_cls, mock_retention_mgr_cls, runner, mock_app_config
+):
+    """Test 'rollback' command with interactive confirmation."""
+    mock_app_config.load_site_config.return_value = MagicMock()
+    mock_app_config.outputs_dir = MagicMock()
+    site_dir = mock_app_config.outputs_dir.__truediv__.return_value
+    site_dir.exists.return_value = True
+    site_dir.__truediv__.return_value.exists.return_value = True
+
+    mock_retention_mgr = mock_retention_mgr_cls.return_value
+    mock_retention_mgr.get_scrape_directories.return_value = [MagicMock(name="2023-01-01")]
+    mock_retention_mgr.get_scrape_directories.return_value[0].name = "2023-01-01"
+
+    mock_cdm = mock_cdm_cls.return_value
+    mock_cdm.rebuild_from_timestamp.return_value = {"summary": "Rollback successful"}
+
+    # Test with 'y' input
+    result = runner.invoke(cli, ["rollback", "--site", "site1"], input="y\n")
+
+    assert result.exit_code == 0
+    assert "Rolling back to 2023-01-01" in result.output
+    assert "Rollback successful" in result.output
+    mock_cdm.rebuild_from_timestamp.assert_called_once_with("2023-01-01")
+
+    # Reset mock for the next independent test case
+    mock_cdm.reset_mock()
+
+    # Test with 'n' input
+    result = runner.invoke(cli, ["rollback", "--site", "site1"], input="n\n")
+
+    assert result.exit_code == 0
+    assert "Cancelled" in result.output
+    # Should not call rebuild at all in this case
+    mock_cdm.rebuild_from_timestamp.assert_not_called()
+
+
+@patch("webowui.cli.RetentionManager")
+@patch("webowui.cli.CurrentDirectoryManager")
+def test_rollback_command_specific_timestamp(
+    mock_cdm_cls, mock_retention_mgr_cls, runner, mock_app_config
+):
+    """Test 'rollback' command with specific timestamp."""
+    mock_app_config.load_site_config.return_value = MagicMock()
+    mock_app_config.outputs_dir = MagicMock()
+    site_dir = mock_app_config.outputs_dir.__truediv__.return_value
+    site_dir.exists.return_value = True
+    site_dir.__truediv__.return_value.exists.return_value = True
+
+    mock_retention_mgr = mock_retention_mgr_cls.return_value
+    mock_retention_mgr.get_scrape_directories.return_value = [
+        MagicMock(name="2023-01-01"),
+        MagicMock(name="2023-01-02"),
+    ]
+    mock_retention_mgr.get_scrape_directories.return_value[0].name = "2023-01-01"
+    mock_retention_mgr.get_scrape_directories.return_value[1].name = "2023-01-02"
+
+    mock_cdm = mock_cdm_cls.return_value
+    mock_cdm.rebuild_from_timestamp.return_value = {"summary": "Rollback successful"}
+
+    result = runner.invoke(
+        cli, ["rollback", "--site", "site1", "--timestamp", "2023-01-01", "--force"]
+    )
+
+    assert result.exit_code == 0
+    assert "Rolling back to 2023-01-01" in result.output
     mock_cdm.rebuild_from_timestamp.assert_called_with("2023-01-01")
 
 

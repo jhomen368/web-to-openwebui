@@ -70,7 +70,7 @@ class TestOutputManagerSaving:
         config.name = "test_wiki"
         config.display_name = "Test Wiki"
         config.base_url = "https://example.com"
-        config.strategy_type = "recursive"
+        config.crawl_strategy = "bfs"
         config.max_depth = 1
         config.cleaning_profile_name = "none"
         config.cleaning_profile_config = {}
@@ -102,21 +102,27 @@ class TestOutputManagerSaving:
                 "checksum": "hash123",
             }
 
-            save_info = manager.save_results(results)
+            # Mock _save_metadata and _save_report to avoid JSON serialization of MagicMock
+            with (
+                patch.object(manager, "_save_metadata") as mock_save_metadata,
+                patch.object(manager, "_save_report") as mock_save_report,
+            ):
 
-            # Verify _save_page called for successful result
-            mock_save_page.assert_called_once_with(result1)
+                save_info = manager.save_results(results)
 
-            # Verify metadata saved
-            assert (manager.output_dir / "metadata.json").exists()
+                # Verify _save_page called for successful result
+                mock_save_page.assert_called_once_with(result1)
 
-            # Verify report saved
-            assert (manager.output_dir / "scrape_report.json").exists()
+                # Verify metadata saved
+                mock_save_metadata.assert_called_once()
 
-            # Verify current directory update attempted
-            mock_current_manager.return_value.update_from_scrape.assert_called_once()
+                # Verify report saved
+                mock_save_report.assert_called_once()
 
-            assert save_info["files_saved"] == 1
+                # Verify current directory update attempted
+                mock_current_manager.return_value.update_from_scrape.assert_called_once()
+
+                assert save_info["files_saved"] == 1
 
     def test_save_page_success(self, tmp_outputs_dir: Path):
         """Test saving a single page successfully."""

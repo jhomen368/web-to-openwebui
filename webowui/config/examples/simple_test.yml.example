@@ -40,10 +40,10 @@ site:
 # ----------------------------------------------------------------------------
 # CRAWLING STRATEGY (Required)
 # ----------------------------------------------------------------------------
-strategy:
+crawling:
   # Strategy type - how the scraper follows links
-  # Options: "recursive" (follow matching links), "selective" (explicit URLs only)
-  type: "recursive"
+  # Options: "bfs" (breadth-first), "dfs" (depth-first), "best_first"
+  strategy: "bfs"
 
   # Maximum depth - how many link levels to follow from start URLs
   # depth=0: Only scrape start_urls
@@ -52,101 +52,120 @@ strategy:
   # Start with 1 for testing!
   max_depth: 1
 
-  # Follow patterns - regex patterns matching URLs to scrape
-  # Use regex escape: \. for literal dots
-  follow_patterns:
-    - "^https://example\\.com/.*"
+  # URL Filters
+  filters:
+    # Follow patterns - regex patterns matching URLs to scrape
+    # Use regex escape: \. for literal dots
+    follow_patterns:
+      - "^https://example\\.com/.*"
 
-  # Exclude patterns - URLs matching these will NOT be scraped
-  # Even if they match follow_patterns
-  exclude_patterns:
-    - ".*\\.pdf$"          # Skip PDF files
-    - ".*\\.jpg$"          # Skip images
-    - ".*\\?.*"            # Skip URLs with query parameters
+    # Exclude patterns - URLs matching these will NOT be scraped
+    # Even if they match follow_patterns
+    exclude_patterns:
+      - ".*\\.pdf$"          # Skip PDF files
+      - ".*\\.jpg$"          # Skip images
+      - ".*\\?.*"            # Skip URLs with query parameters
+
+  # Rate Limiting
+  rate_limit:
+    # Requests per second - be respectful to the server!
+    # 1-2 req/sec is safe for most public sites
+    requests_per_second: 1
+
+    # Delay between requests (in seconds)
+    # Additional throttling on top of requests_per_second
+    delay_between_requests: 0.5
 
 # ----------------------------------------------------------------------------
-# RATE LIMITING (Required)
+# CONTENT PROCESSING PIPELINE
 # ----------------------------------------------------------------------------
-rate_limit:
-  # Requests per second - be respectful to the server!
-  # 1-2 req/sec is safe for most public sites
-  requests_per_second: 1
+# The content processing pipeline consists of 3 main stages:
+#
+# Stage 1: HTML Filtering (html_filtering)
+#   - Applied to raw HTML before conversion
+#   - Removes tags, links, and low-density blocks
+#
+# Stage 2: Markdown Processing
+#   - 2a: Conversion (markdown_conversion) - HTML to Markdown
+#   - 2b: Cleaning (markdown_cleaning) - Profile-based cleanup
+#
+# Stage 3: Result Filtering (result_filtering)
+#   - Final checks on the generated markdown
 
-  # Delay between requests (in seconds)
-  # Additional throttling on top of requests_per_second
-  delay: 0.5
+# ----------------------------------------------------------------------------
+# STAGE 1: HTML Filtering
+# ----------------------------------------------------------------------------
+html_filtering:
+  # Heuristic Pruning Filter (aggressive content removal)
+  # RECOMMENDED: enabled: false (rely on explicit tags and Stage 2 profiles instead)
+  pruning:
+    enabled: false
+    # threshold: 0.6           # Content density (0.0-1.0)
+    # min_word_threshold: 50   # Skip blocks with < N words
+
+  # Basic HTML Filters (Always active if defined)
+  # ---------------------------------------------
+  
+  # HTML tags to remove (standard HTML tag names ONLY, no classes/IDs)
+  # excluded_tags: [nav, footer, aside, header]
+  
+  # Link filtering
+  # exclude_external_links: true      # Remove links to external sites
+  # exclude_social_media_links: true  # Remove social media share buttons
+  
+  # Block filtering (crawl4ai word_count_threshold)
+  # Remove HTML blocks with fewer than N words
+  min_block_words: 10
 
 # ----------------------------------------------------------------------------
-# CONTENT EXTRACTION (Optional - uses sensible defaults)
+# STAGE 2a: Markdown Conversion
 # ----------------------------------------------------------------------------
-extraction:
-  # CSS selector for main content
-  # "body" = extract everything (default)
+# Controls how crawl4ai converts HTML to markdown
+markdown_conversion:
+  # Main content selector (body gets everything, or use specific selector)
   content_selector: "body"
 
-  # Selectors to remove before extraction (list of CSS selectors)
-  # Comment out to disable
+  # Elements to remove before extraction (CSS selectors supported here)
   # remove_selectors:
-  #   - "nav"
-  #   - "header"
-  #   - "footer"
+  #   - "script"     # JavaScript code
+  #   - "style"      # CSS styles
+  #   - "nav"        # Navigation menus
+  #   - "footer"     # Page footers
+
+  # Markdown generation options
+  markdown_options:
+    include_images: true       # Keep image references
+    include_links: true        # Keep hyperlinks
+    preserve_structure: true   # Maintain heading hierarchy
+    heading_style: "atx"       # Use # for headings (ATX style)
 
 # ----------------------------------------------------------------------------
-# FILTERS (Optional - uses sensible defaults)
+# STAGE 2b: Markdown Cleaning
 # ----------------------------------------------------------------------------
-filters:
-  # Minimum content length (characters) - too short = probably navigation
-  min_content_length: 100
-
-  # Maximum content length (characters) - too long = potential issue
-  max_content_length: 500000
-
-# ----------------------------------------------------------------------------
-# CONTENT CLEANING (Optional)
-# ----------------------------------------------------------------------------
-cleaning:
-  # Cleaning profile to use
-  # "none" = no cleaning (raw markdown from crawl4ai)
-  # "mediawiki" = remove wiki boilerplate
-  # "fandomwiki" = remove Fandom-specific elements
+# Applied AFTER markdown generation to handle site-specific patterns
+markdown_cleaning:
+  # Profile: "mediawiki" (recommended), "none" (no cleaning), or custom
+  # This selects the Cleaning Profile class to use (e.g., MediaWikiProfile)
   profile: "none"
 
-  # Profile-specific configuration (if needed)
+  # Profile-specific options (see cleaning_profiles README for details)
   # config:
-  #   filter_dead_links: false
+  #   remove_infoboxes: true
 
 # ----------------------------------------------------------------------------
-# OPENWEBUI INTEGRATION (Optional - required for upload)
+# STAGE 3: Result Filtering
 # ----------------------------------------------------------------------------
-# Uncomment to enable automatic uploads
-# openwebui:
-#   # Knowledge base name in OpenWebUI
-#   knowledge_name: "Simple Test"
-#
-#   # Auto-upload after each scrape
-#   auto_upload: false
-#
-#   # Preserve files when removed from scrape (don't delete from OpenWebUI)
-#   preserve_deleted_files: false
+# Final checks on the generated content
+result_filtering:
+  # Minimum page length (characters) - filter out stubs/redirects
+  min_page_length: 100
 
-# ----------------------------------------------------------------------------
-# RETENTION (Optional - disabled by default)
-# ----------------------------------------------------------------------------
-# Uncomment to enable automatic backup cleanup
-# retention:
-#   enabled: false
-#   keep_backups: 2
-#   auto_cleanup: true
+  # Maximum page length (characters) - prevent memory issues
+  max_page_length: 500000
 
-# ----------------------------------------------------------------------------
-# SCHEDULING (Optional - disabled by default)
-# ----------------------------------------------------------------------------
-# Uncomment to enable scheduled scraping (Docker daemon mode)
-# schedule:
-#   enabled: false
-#   type: "cron"
-#   cron: "0 2 * * *"  # 2 AM daily
-#   timezone: "America/Los_Angeles"
+  # Only scrape HTML pages
+  allowed_content_types:
+    - "text/html"
 
 # ============================================================================
 # THAT'S IT! This is the minimum configuration needed.

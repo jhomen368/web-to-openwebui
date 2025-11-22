@@ -70,36 +70,69 @@ class SiteConfig:
         self.base_url = site_info.get("base_url")
         self.start_urls = site_info.get("start_urls", [])
 
-        # Strategy
-        strategy = config_dict.get("strategy", {})
-        self.strategy_type = strategy.get("type", "recursive")
-        self.max_depth = strategy.get("max_depth", 3)
-        self.follow_patterns = strategy.get("follow_patterns", [])
-        self.exclude_patterns = strategy.get("exclude_patterns", [])
+        # Crawling (NEW) - replaces "strategy"
+        crawling = config_dict.get("crawling", {})
+        self.crawl_strategy = crawling.get("strategy", "bfs")
+        self.max_depth = crawling.get("max_depth", 3)
+        self.max_pages = crawling.get("max_pages")
+        self.use_streaming = crawling.get("streaming", False)
+
+        # Filters (moved under crawling)
+        filters = crawling.get("filters", {})
+        self.follow_patterns = filters.get("follow_patterns", [])
+        self.exclude_patterns = filters.get("exclude_patterns", [])
+        self.exclude_domains = filters.get("exclude_domains", [])
+
+        # Keywords for best_first
+        self.crawl_keywords = crawling.get("keywords", [])
+        self.crawl_keyword_weight = crawling.get("keyword_weight", 0.7)
 
         # Rate limiting
-        rate_limit = strategy.get("rate_limit", {})
+        rate_limit = crawling.get("rate_limit", {})
         self.requests_per_second = rate_limit.get("requests_per_second", 2)
         self.delay_between_requests = rate_limit.get("delay_between_requests", 0.5)
         self.max_retries = rate_limit.get("max_retries", 3)
 
-        # Extraction
-        extraction = config_dict.get("extraction", {})
-        self.content_selector = extraction.get("content_selector", "body")
-        self.remove_selectors = extraction.get("remove_selectors", [])
-        self.markdown_options = extraction.get("markdown_options", {})
+        # ---------------------------------------------------------------------
+        # PIPELINE STAGE 1: HTML Filtering
+        # ---------------------------------------------------------------------
+        html_filtering = config_dict.get("html_filtering", {})
 
-        # Filters
-        filters = config_dict.get("filters", {})
-        self.min_content_length = filters.get("min_content_length", 100)
-        self.max_content_length = filters.get("max_content_length", 500000)
-        self.allowed_content_types = filters.get("allowed_content_types", ["text/html"])
-        self.filter_dead_links = filters.get("filter_dead_links", False)
+        # Pruning filter (heuristic)
+        pruning = html_filtering.get("pruning", {})
+        self.pruning_enabled = pruning.get("enabled", False)
+        self.pruning_threshold = pruning.get("threshold", 0.6)
+        self.pruning_min_words = pruning.get("min_word_threshold", 50)
 
-        # Cleaning profiles (NEW)
-        cleaning_config = config_dict.get("cleaning", {})
-        self.cleaning_profile_name = cleaning_config.get("profile", "none")
-        self.cleaning_profile_config = cleaning_config.get("config", {})
+        # Basic HTML filtering (explicit)
+        self.excluded_tags = html_filtering.get("excluded_tags", [])
+        self.exclude_external_links = html_filtering.get("exclude_external_links", False)
+        self.exclude_social_media = html_filtering.get("exclude_social_media", False)
+        self.min_block_words = html_filtering.get("min_block_words", 10)
+
+        # ---------------------------------------------------------------------
+        # PIPELINE STAGE 2a: Markdown Conversion
+        # ---------------------------------------------------------------------
+        markdown_conversion = config_dict.get("markdown_conversion", {})
+        self.content_selector = markdown_conversion.get("content_selector", "body")
+        self.remove_selectors = markdown_conversion.get("remove_selectors", [])
+        self.markdown_options = markdown_conversion.get("markdown_options", {})
+
+        # ---------------------------------------------------------------------
+        # PIPELINE STAGE 2b: Markdown Cleaning
+        # ---------------------------------------------------------------------
+        markdown_cleaning = config_dict.get("markdown_cleaning", {})
+        self.cleaning_profile_name = markdown_cleaning.get("profile", "none")
+        self.cleaning_profile_config = markdown_cleaning.get("config", {})
+
+        # ---------------------------------------------------------------------
+        # PIPELINE STAGE 3: Result Filtering
+        # ---------------------------------------------------------------------
+        result_filtering = config_dict.get("result_filtering", {})
+        self.min_page_length = result_filtering.get("min_page_length", 100)
+        self.max_page_length = result_filtering.get("max_page_length", 500000)
+        self.allowed_content_types = result_filtering.get("allowed_content_types", ["text/html"])
+        self.filter_dead_links = result_filtering.get("filter_dead_links", False)
 
         # Open Web UI
         openwebui = config_dict.get("openwebui", {})
@@ -157,8 +190,8 @@ class SiteConfig:
             errors.append("Base URL is required")
         if not self.start_urls:
             errors.append("At least one start URL is required")
-        if self.strategy_type not in ["recursive", "selective", "depth_limited", "sitemap"]:
-            errors.append(f"Invalid strategy type: {self.strategy_type}")
+        if self.crawl_strategy not in ["bfs", "dfs", "best_first"]:
+            errors.append(f"Invalid crawl strategy: {self.crawl_strategy}")
 
         # Info about shared knowledge bases (now safe with folder isolation!)
         if self.knowledge_id:
@@ -184,7 +217,6 @@ class SiteConfig:
                     continue
 
             if sharing_sites:
-                # This is good news - sites can safely share knowledge bases now!
                 errors.append(
                     f"📁 SHARED KNOWLEDGE INFO:\n"
                     f"   Knowledge base '{self.knowledge_id}' is shared with: {', '.join(sharing_sites)}\n"

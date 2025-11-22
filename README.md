@@ -100,13 +100,14 @@ site:
   start_urls:
     - "https://example.com/docs/"
 
-strategy:
-  type: "recursive"
+crawling:
+  strategy: "bfs"
   max_depth: 3
-  follow_patterns:
-    - ".*/docs/.*"
+  filters:
+    follow_patterns:
+      - ".*/docs/.*"
 
-cleaning:
+markdown_cleaning:
   profile: "none"
 
 openwebui:
@@ -134,6 +135,18 @@ docker compose ps               # Check status
 ```
 
 Done! The container is running. It will automatically scrape and upload according to the schedule, or you can trigger them manually (see next section).
+
+---
+
+## Crawling Configuration
+
+web-to-openwebui uses crawl4ai for deep crawling with three built-in strategies:
+
+- **BFS (Breadth-First Search)** - Recommended for 90% of sites. Explores all pages at each depth level before going deeper.
+- **DFS (Depth-First Search)** - For hierarchical exploration. Follows one branch to its end before exploring others.
+- **BestFirst** - Intelligent keyword-based prioritization. Crawls most relevant pages first based on keywords.
+
+👉 **Full Configuration Guide:** [`webowui/config/examples/README.md`](webowui/config/examples/README.md)
 
 ---
 
@@ -303,7 +316,7 @@ webowui rebuild-current --site <name>    # Rebuild current/ from latest scrape
 webowui rebuild-state --site <name>      # Rebuild upload_status.json from OpenWebUI
 webowui sync --site <name>               # Reconcile local vs remote state
 webowui sync --site <name> --fix         # Auto-fix discrepancies
-webowui verify-current --site <name>     # Verify current/ directory integrity
+webowui show-current --site <name>       # Show current directory status
 ```
 
 ### Backup & Retention
@@ -313,6 +326,7 @@ webowui cleanup --site <name>            # Clean up old backups
 webowui cleanup --site <name> --dry-run  # Preview what would be deleted
 webowui rollback --site <name>           # Rollback to most recent backup
 webowui rollback --site <name> --list    # List available backups
+webowui reclean --site <name>            # Re-clean scraped content
 ```
 
 **For complete details:**
@@ -407,7 +421,7 @@ Site configurations use YAML files in `data/config/sites/`.
 **Quick Reference:**
 - `site.name` - Unique identifier
 - `site.base_url` - Root URL
-- `strategy.type` - `recursive` or `selective`
+- `crawling.strategy` - `bfs`, `dfs`, or `best_first`
 - `cleaning.profile` - Cleaning profile to use
 - `openwebui.auto_upload` - Enable auto-upload
 

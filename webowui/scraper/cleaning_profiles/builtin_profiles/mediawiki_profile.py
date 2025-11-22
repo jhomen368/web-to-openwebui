@@ -13,10 +13,13 @@ class MediaWikiProfile(BaseCleaningProfile):
 
     def clean(self, content: str, metadata: dict | None = None) -> str:
         """
-        Clean MediaWiki content by removing navigation, footers, and citations.
+        Clean MediaWiki content (Stage 2 of two-stage filtering).
+
+        Stage 1 (crawl4ai): Generic HTML filtering via content_filtering config
+        Stage 2 (this profile): MediaWiki-specific pattern removal
 
         Args:
-            content: Raw scraped content
+            content: Markdown content (already filtered by crawl4ai if enabled)
             metadata: Optional metadata (url, site_config, etc.)
 
         Returns:
@@ -33,6 +36,9 @@ class MediaWikiProfile(BaseCleaningProfile):
         remove_wiki_meta = self.config.get("remove_wiki_meta", True)
         remove_navigation_boilerplate = self.config.get("remove_navigation_boilerplate", True)
         remove_template_links = self.config.get("remove_template_links", True)
+        remove_media = self.config.get("remove_media", True)
+        remove_references_section = self.config.get("remove_references_section", True)
+        remove_header_navigation = self.config.get("remove_header_navigation", True)
 
         # Step 1: Remove wiki meta messages early (before main extraction)
         if remove_wiki_meta:
@@ -42,36 +48,101 @@ class MediaWikiProfile(BaseCleaningProfile):
         if remove_navigation_boilerplate:
             content = self._remove_navigation_boilerplate(content)
 
-        # Step 3: Remove table of contents
+        # Step 3: Remove header navigation (Anonymous, Search, etc.)
+        if remove_header_navigation:
+            content = self._remove_header_navigation(content)
+
+        # Step 4: Remove table of contents
         if remove_table_of_contents:
             content = self._remove_table_of_contents(content)
 
-        # Step 4: Remove infoboxes early (before main content extraction)
+        # Step 5: Remove infoboxes early (before main content extraction)
         if remove_infoboxes:
             content = self._remove_infoboxes(content)
 
-        # Step 5: Extract main content (existing logic with updated patterns)
+        # Step 6: Extract main content (existing logic with updated patterns)
         content = self._extract_main_content(content, remove_citations, remove_categories)
 
-        # Step 6: Remove external links section
+        # Step 7: Remove external links section
         if remove_external_links:
             content = self._remove_external_links_section(content)
 
-        # Step 7: Remove version history
+        # Step 8: Remove version history
         if remove_version_history:
             content = self._remove_version_history(content)
 
-        # Step 8: Remove template editing links
+        # Step 9: Remove template editing links
         if remove_template_links:
             content = self._remove_template_links(content)
 
-        # Step 9: Filter dead links if requested (existing logic)
+        # Step 10: Remove media sections
+        if remove_media:
+            content = self._remove_media_sections(content)
+
+        # Step 11: Remove references section
+        if remove_references_section:
+            content = self._remove_references_section(content)
+
+        # Step 12: Filter dead links if requested (existing logic)
         if filter_dead_links:
             content = self._remove_dead_links(content)
 
-        # Step 10: Clean up excessive blank lines (existing logic)
+        # Step 13: Clean up excessive blank lines (existing logic)
         content = re.sub(r"\n{3,}", "\n\n", content)
         content = content.strip()
+
+        return content
+
+    def _remove_media_sections(self, content: str) -> str:
+        """
+        Remove media sections (Gallery, Images, Videos).
+
+        Args:
+            content: Content with potential media sections
+
+        Returns:
+            Content with media sections removed
+        """
+        # Section headers to truncate at or remove
+        # We truncate because these are usually at the bottom
+        section_patterns = [
+            r"^##\s+Media\s*$",
+            r"^##\s+Gallery\s*$",
+            r"^##\s+Images\s*$",
+            r"^##\s+Videos\s*$",
+        ]
+
+        lines = content.split("\n")
+        for i, line in enumerate(lines):
+            for pattern in section_patterns:
+                if re.match(pattern, line.strip()):
+                    # Truncate content here
+                    return "\n".join(lines[:i]).rstrip()
+
+        return content
+
+    def _remove_references_section(self, content: str) -> str:
+        """
+        Remove References/Notes sections.
+
+        Args:
+            content: Content with potential references section
+
+        Returns:
+            Content with references section removed
+        """
+        section_patterns = [
+            r"^##\s+References\s*$",
+            r"^##\s+Notes\s*$",
+            r"^##\s+Footnotes\s*$",
+        ]
+
+        lines = content.split("\n")
+        for i, line in enumerate(lines):
+            for pattern in section_patterns:
+                if re.match(pattern, line.strip()):
+                    # Truncate content here
+                    return "\n".join(lines[:i]).rstrip()
 
         return content
 
@@ -159,6 +230,78 @@ class MediaWikiProfile(BaseCleaningProfile):
                     return "\n".join(lines[:i]).rstrip()
 
         return content
+
+    def _remove_header_navigation(self, content: str) -> str:
+        """
+        Remove top-of-page navigation elements (Anonymous, Search, etc.).
+
+        Args:
+            content: Content with potential header navigation
+
+        Returns:
+            Content with header navigation removed
+        """
+        lines = content.split("\n")
+        cleaned_lines = []
+
+        # Patterns to skip at the start of the file
+        skip_patterns = [
+            r"^##\s+Anonymous\s*$",
+            r"^###\s+Not\s+logged\s+in\s*$",
+            r"^###\s+Search\s*$",
+            r"^###\s+Namespaces\s*$",
+            r"^###\s+Page\s+actions\s*$",
+            r"^###\s+More\s*$",
+            r"^\[Create\s+account\]",
+            r"^\[Log\s+in\]",
+            r"^\[Read\]",
+            r"^\[View\s+source\]",
+            r"^\[History\]",
+        ]
+
+        # Also skip lines that are just a single link at the start (navigation menus)
+        # e.g. [Armor](...)
+
+        content_started = False
+
+        for i, line in enumerate(lines):
+            if content_started:
+                cleaned_lines.append(line)
+                continue
+
+            # If line is empty, skip
+            if not line.strip():
+                cleaned_lines.append(line)  # Preserve blank lines between header and content
+                continue
+
+            # Check if line matches skip patterns
+            should_skip = False
+            for pattern in skip_patterns:
+                if re.match(pattern, line.strip()):
+                    should_skip = True
+                    break
+
+            if should_skip:
+                continue
+
+            # Check for navigation links (lines that are just a link)
+            # But be careful not to skip the main title or intro text
+            # Heuristic: If it's a link and we haven't seen a header or long text yet
+            if re.match(r"^\[.*?\]\(.*?\)\s*$", line.strip()):
+                # It's a single link. Is it navigation?
+                # If it's followed by "Equipment ▼" or similar, it's nav.
+                if "▼" in line or "Equipment" in line or "Items" in line or "Locales" in line:
+                    continue
+                # If it's just a link, it might be a breadcrumb or nav link
+                # Let's skip it if we are still in the "header zone" (first 50 lines)
+                if i < 50:
+                    continue
+
+            # If we found real content, stop skipping
+            cleaned_lines.append(line)
+            content_started = True
+
+        return "\n".join(cleaned_lines)
 
     def _remove_table_of_contents(self, content: str) -> str:
         """
@@ -321,6 +464,9 @@ class MediaWikiProfile(BaseCleaningProfile):
         """
         Extract only the main article content, removing navigation and footers.
 
+        Focuses on MediaWiki-specific patterns. Generic HTML elements
+        (nav, footer, ads) should be removed via content_filtering in config.
+
         Args:
             content: Full scraped content
             remove_citations: Whether to stop at citation markers
@@ -331,95 +477,34 @@ class MediaWikiProfile(BaseCleaningProfile):
         """
         lines = content.split("\n")
 
-        # Step 1: Skip frontmatter
+        # Step 1: Skip frontmatter (only at the very beginning)
         content_start = 0
-        in_frontmatter = False
-
-        for i, line in enumerate(lines):
-            if line.strip() == "---":
-                if not in_frontmatter:
-                    in_frontmatter = True
-                else:
-                    in_frontmatter = False
+        if len(lines) > 0 and lines[0].strip() == "---":
+            for i in range(1, len(lines)):
+                if lines[i].strip() == "---":
                     content_start = i + 1
-                continue
+                    break
 
         # Step 2: Build cleaned content line by line
         cleaned_lines = []
-        found_content_start = False
 
         for i in range(content_start, len(lines)):
             line = lines[i].strip()
 
-            # Footer markers - stop here (UPDATED with generic patterns)
-            footer_markers = [
-                "Retrieved from",
-                "[Category]",
-                "## Navigation",
-                "## Wiki tools",
-                "## Page tools",
-            ]
-
-            # Generic pattern for footer navigation tables
-            if re.match(r"_\[.*?\]\(", line):
-                break
-
+            # MediaWiki-specific footer markers
             if remove_categories and line.startswith("## Categories"):
                 break
 
             if remove_citations and (line.startswith("1. [↑]") or line.startswith("  1. [↑]")):
                 break
 
-            if any(line.startswith(marker) for marker in footer_markers):
-                break
-
-            if remove_categories and line.startswith("## Sources"):
-                break
-
-            # Skip navigation patterns (UPDATED with generic pattern)
+            # Wiki-specific patterns
             skip_patterns = [
-                r"You can view its source",
-                r"^\s*\*\s*\[(Read|View source|History|Discussion|Create account|Log in)\]",
-                r"^###\s*(Search|Namespaces|More|Page actions)",
-                r"^##\s*(Anonymous|Not logged in)",
-                r"From .* Wiki",  # Generic wiki attribution
-                r"^\*\s*More\s*$",
+                r"From .* Wiki$",
+                r"Retrieved from",
             ]
 
-            should_skip = False
-            for pattern in skip_patterns:
-                if re.search(pattern, line):
-                    should_skip = True
-                    break
-
-            if should_skip:
-                continue
-
-            # Find content start
-            if not found_content_start:
-                if not line:
-                    continue
-
-                # Skip short headings (likely navigation)
-                if line.startswith("#"):
-                    heading_text = re.sub(r"^#+\s*", "", line)
-                    if len(heading_text.split()) < 2 and "Contents" not in heading_text:
-                        continue
-
-                # Check if real content
-                clean_line = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", line)
-                clean_line = re.sub(r"\*\*([^\*]+)\*\*", r"\1", clean_line)
-                clean_line = re.sub(r"!\[.*?\]\(.*?\)", "", clean_line)
-
-                word_count = len(clean_line.split())
-
-                if (
-                    word_count >= 5
-                    or (line.startswith("|") and "---" not in line)
-                    or (line.startswith("  *"))
-                ):
-                    found_content_start = True
-                    cleaned_lines.append(lines[i])
+            if any(re.search(p, line) for p in skip_patterns):
                 continue
 
             # Add line to content (preserve original formatting)
@@ -514,6 +599,21 @@ class MediaWikiProfile(BaseCleaningProfile):
                     "type": "boolean",
                     "default": True,
                     "description": "Remove template editing links like [v], [t], [e]",
+                },
+                "remove_media": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Remove Media, Gallery, Images, and Videos sections",
+                },
+                "remove_references_section": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Remove References, Notes, and Footnotes sections",
+                },
+                "remove_header_navigation": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Remove top-of-page navigation (Anonymous, Search, etc.)",
                 },
             },
         }

@@ -189,7 +189,7 @@ cleaned: true
                 "timestamp": self.timestamp,
                 "start_time": min(r.timestamp for r in results).isoformat() if results else None,
                 "end_time": max(r.timestamp for r in results).isoformat() if results else None,
-                "strategy": self.config.strategy_type,
+                "strategy": self.config.crawl_strategy,
                 "max_depth": self.config.max_depth,
             },
             "statistics": {

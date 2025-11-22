@@ -37,6 +37,9 @@ class MaxrollProfile(BaseCleaningProfile):
         # Remove footer
         content = self._remove_footer(content)
 
+        # Remove social media links
+        content = self._remove_social_media(content)
+
         # Clean up excessive blank lines
         content = re.sub(r"\n{3,}", "\n\n", content)
         content = content.strip()
@@ -46,7 +49,7 @@ class MaxrollProfile(BaseCleaningProfile):
     def _remove_global_nav(self, content: str) -> str:
         """Remove global navigation and sidebar."""
         lines = content.split("\n")
-        cleaned_lines = []
+        cleaned_lines: list[str] = []
 
         # Heuristic: The global nav starts early and contains links to other games
         # We'll look for the start of the main content or specific nav markers
@@ -77,6 +80,8 @@ class MaxrollProfile(BaseCleaningProfile):
             r"^Tools$",
             # Match game list rows starting with image link
             r"^\[!\[",
+            # Match game list rows starting with game name link
+            r"^\[.*\]\(https://maxroll\.gg/.*\)$",
         ]
 
         # We want to skip everything until we hit the actual page content
@@ -89,12 +94,18 @@ class MaxrollProfile(BaseCleaningProfile):
         # But that's specific to that page.
 
         # Strategy: Filter out known nav lines
+        # Also filter out lines that are just links to other games or sections
 
         for line in lines:
             is_nav = False
             for marker in nav_markers:
                 if re.search(marker, line):
-                    is_nav = True
+                    # Special check for game links - only if they are in the nav section (top of file)
+                    if marker == r"^\[.*\]\(https://maxroll\.gg/.*\)$":
+                        if len(cleaned_lines) < 50:  # Only filter these at the top
+                            is_nav = True
+                    else:
+                        is_nav = True
                     break
 
             if not is_nav:
@@ -138,6 +149,31 @@ class MaxrollProfile(BaseCleaningProfile):
             return "\n".join(lines[:footer_start_index])
 
         return "\n".join(lines)
+
+    def _remove_social_media(self, content: str) -> str:
+        """Remove social media links."""
+        lines = content.split("\n")
+        cleaned_lines: list[str] = []
+
+        social_patterns = [
+            r"twitter\.com",
+            r"facebook\.com",
+            r"discord\.gg",
+            r"youtube\.com",
+            r"twitch\.tv",
+        ]
+
+        for line in lines:
+            is_social = False
+            for pattern in social_patterns:
+                if re.search(pattern, line, re.IGNORECASE):
+                    is_social = True
+                    break
+
+            if not is_social:
+                cleaned_lines.append(line)
+
+        return "\n".join(cleaned_lines)
 
     @classmethod
     def get_config_schema(cls) -> dict[str, Any]:

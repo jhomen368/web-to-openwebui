@@ -161,7 +161,6 @@ web-to-openwebui/
 │   │
 │   ├── scraper/                     # Web scraping engine
 │   │   ├── crawler.py              # Main crawler with crawl4ai
-│   │   ├── strategies.py           # Crawling strategies
 │   │   ├── content_cleaner.py      # Deprecated (see cleaning_profiles)
 │   │   └── cleaning_profiles/      # ⭐ Modular content cleaning
 │   │       ├── base.py             # BaseCleaningProfile abstract
@@ -191,7 +190,6 @@ web-to-openwebui/
 │   ├── unit/                        # Unit tests (isolated, fast)
 │   │   ├── test_config.py
 │   │   ├── test_crawler.py
-│   │   ├── test_strategies.py
 │   │   ├── test_cleaning_profiles.py
 │   │   ├── test_output_manager.py
 │   │   ├── test_metadata_tracker.py
@@ -263,9 +261,47 @@ web-to-openwebui/
 - **Templates:** [`webowui/config/examples/README.md`](../webowui/config/examples/README.md)
 
 **[`webowui/scraper/crawler.py`](../webowui/scraper/crawler.py)** - Main scraping logic
-- Uses crawl4ai for browser automation
-- Implements rate limiting and retry logic
-- Returns CrawlResult objects
+- Uses **crawl4ai's deep crawling system** (BFS, DFS, BestFirst)
+- Implements two-stage content filtering (HTML → Markdown → Profile)
+- Handles rate limiting and result conversion
+
+### Crawling System
+
+The scraper uses **crawl4ai's deep crawling system** with three strategies:
+
+- **BFS (Breadth-First):** Explores level-by-level (default, recommended)
+- **DFS (Depth-First):** Explores branch-by-branch
+- **BestFirst:** Keyword-based prioritization
+
+**Implementation:** `webowui/scraper/crawler.py`
+
+The `WikiCrawler` class:
+1. Creates appropriate deep crawl strategy from config (`_create_deep_crawl_strategy()`)
+2. Configures crawl4ai with content filtering (`_create_crawler_config()`)
+3. Executes crawl via `AsyncWebCrawler.arun()`
+4. Converts results to our `CrawlResult` format (`_convert_result()`)
+
+**Key Design Decision:** We use crawl4ai's proven deep crawling instead of custom queue management. This provides:
+- Streaming mode support
+- Better content filtering (two-stage: HTML → Markdown)
+- Keyword-based prioritization
+- Automatic improvements as crawl4ai evolves
+
+### Content Filtering (Two-Stage)
+
+**Stage 1: HTML Filtering (`html_filtering`)**
+- **When:** Before markdown conversion
+- **Config:** `html_filtering` section
+- **Purpose:** Remove generic HTML elements (nav, footer, ads)
+- **Capabilities:** Tag removal, external link filtering, block pruning
+
+**Stage 2: Markdown Cleaning (`markdown_cleaning`)**
+- **When:** After markdown generation
+- **Config:** `markdown_cleaning` section
+- **Purpose:** Site-specific pattern removal (wiki markup, templates)
+- **Capabilities:** Regex cleaning, structure manipulation via profiles
+
+For detailed documentation on the filtering pipeline and available profiles, see the [Cleaning Profiles Reference](../webowui/scraper/cleaning_profiles/builtin_profiles/README.md).
 
 **[`webowui/storage/output_manager.py`](../webowui/storage/output_manager.py)** - File management
 - Saves scraped content to timestamped directories
@@ -336,7 +372,7 @@ class MySiteProfile(BaseCleaningProfile):
 3. **Reference in your site config**:
 ```yaml
 # config/sites/mysite.yaml
-cleaning:
+markdown_cleaning:
   profile: "mysite"
   config:
     remove_ads: true
@@ -353,8 +389,29 @@ cleaning:
 3. Add tests to [`tests/unit/test_cli.py`](../tests/unit/)
 4. Update README.md with examples
 
+**Current CLI Commands:**
+- `check-state` - Check health of local upload state
+- `clean` - Remove old scrapes
+- `daemon` - Run scheduler daemon
+- `diff` - Compare two scrapes
+- `health` - Enhanced healthcheck
+- `list` - List all scrapes
+- `rebuild-current` - Rebuild current/ directory
+- `rebuild-state` - Rebuild state from OpenWebUI
+- `reclean` - Re-clean scraped content
+- `rollback` - Rollback to previous backup
+- `schedules` - List configured schedules
+- `scrape` - Scrape web content
+- `show-current` - Show current directory status
+- `sites` - List configured sites
+- `sync` - Reconcile local/remote state
+- `upload` - Upload content to OpenWebUI
+- `validate` - Validate configuration
+
+> **Note:** Run `python -m webowui --help` for the most up-to-date list of commands and options.
+
 **To add new scraping capability:**
-1. Modify [`webowui/scraper/strategies.py`](../webowui/scraper/strategies.py) or [`webowui/scraper/crawler.py`](../webowui/scraper/crawler.py)
+1. Modify [`webowui/scraper/crawler.py`](../webowui/scraper/crawler.py)
 2. Update [`webowui/config.py`](../webowui/config.py) for new options
 3. Add tests in [`tests/unit/`](../tests/unit/)
 4. Add integration test for end-to-end verification

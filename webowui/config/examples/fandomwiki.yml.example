@@ -1,17 +1,17 @@
 # =============================================================================
-# MediaWiki Site Configuration Template
+# Fandom Wiki Site Configuration Template
 # =============================================================================
-# This template is designed for MediaWiki-based sites. Copy this file to
-# data/config/sites/yoursite.yaml and customize for your wiki.
+# This template is designed for Fandom-hosted wikis (formerly Wikia).
+# Copy this file to data/config/sites/yoursite.yaml and customize.
 #
-# Tested with: Monster Hunter Wiki, Path of Exile 2 Wiki, Wikipedia
-# Compatible with: Any MediaWiki installation (v1.35+)
+# Tested with: Escape from Tarkov Wiki (Fandom)
+# Compatible with: Any wiki hosted on fandom.com
 #
 # QUICK START:
-#   1. Copy: cp mediawiki.yml.example mysite.yaml
+#   1. Copy: cp fandomwiki.yml.example myfandom.yaml
 #   2. Edit: Change base_url, start_urls, and site name
-#   3. Test: webowui validate --site mysite
-#   4. Scrape: webowui scrape --site mysite
+#   3. Test: webowui validate --site myfandom
+#   4. Scrape: webowui scrape --site myfandom
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -19,19 +19,19 @@
 # -----------------------------------------------------------------------------
 site:
   # Internal identifier (lowercase, no spaces, used for directory names)
-  name: "mywiki"
+  name: "myfandom"
 
   # Human-readable name (used in logs and OpenWebUI knowledge base)
-  display_name: "My Wiki"
+  display_name: "My Fandom Wiki"
 
   # Base URL of the wiki (without /wiki/ path)
-  base_url: "https://example.com"
+  base_url: "https://yourwiki.fandom.com"
 
   # Starting pages for the scraper (usually Main Page or index)
   start_urls:
-    - "https://example.com/wiki/Main_Page"
+    - "https://yourwiki.fandom.com/wiki/Main_Page"
     # Add more start URLs if needed:
-    # - "https://example.com/wiki/Category:Important_Articles"
+    # - "https://yourwiki.fandom.com/wiki/Category:Important_Articles"
 
 # -----------------------------------------------------------------------------
 # Crawling Strategy
@@ -55,7 +55,7 @@ crawling:
   filters:
     # URL patterns to follow (Python regex)
     follow_patterns:
-      - "^https://example\\.com/wiki/.*"
+      - "^https://yourwiki\\.fandom\\.com/wiki/.*"
 
     # URL patterns to exclude (Python regex)
     # These are standard MediaWiki pages you usually don't want
@@ -74,6 +74,9 @@ crawling:
       - ".*oldid=.*"          # Old revisions
       - ".*diff=.*"           # Difference pages
       - ".*printable=.*"      # Print versions
+      - ".*Blog:.*"           # Fandom blog posts
+      - ".*Message_Wall:.*"   # Fandom message walls
+      - ".*Forum:.*"          # Fandom forums
 
       # Wiki administrative/meta pages (about, policies, disclaimers)
       - ".*[Ww]iki:[Aa]bout"                 # About/info pages
@@ -135,7 +138,7 @@ html_filtering:
   # ---------------------------------------------
   
   # HTML tags to remove (standard HTML tag names ONLY, no classes/IDs)
-  # Optimal Safe Set for MediaWiki (Tested on Monster Hunter & PoE2 Wikis):
+  # Optimal Safe Set for Fandom (Tested on Escape from Tarkov Wiki):
   excluded_tags: 
     - nav
     - footer
@@ -165,6 +168,12 @@ markdown_conversion:
     - "style"      # CSS styles
     - "nav"        # Navigation menus
     - "footer"     # Page footers
+    - ".wds-global-footer" # Fandom global footer
+    - ".global-navigation" # Fandom global navigation
+    - ".fandom-community-header" # Fandom community header
+    - ".page-header__contribution-buttons" # Edit buttons
+    - ".page-header__categories" # Categories (if you want to remove them early)
+    - "#mixed-content-footer" # "More Fandom" footer
 
   # Markdown generation options
   markdown_options:
@@ -177,17 +186,24 @@ markdown_conversion:
 # STAGE 2b: Markdown Cleaning (Profiles)
 # -----------------------------------------------------------------------------
 # Applied AFTER markdown generation to handle site-specific patterns
-# The MediaWiki cleaning profile removes common wiki boilerplate to create
-# embedding-ready content for RAG (Retrieval Augmented Generation)
+# The FandomWiki cleaning profile extends MediaWiki cleaning with Fandom-specific
+# logic to remove ads, promotions, and community boilerplate.
 markdown_cleaning:
-  # Profile: "mediawiki" (recommended), "none" (no cleaning), or custom
-  # This selects the Cleaning Profile class to use (e.g., MediaWikiProfile)
-  profile: "mediawiki"
+  # Profile: "fandomwiki" (recommended for Fandom sites)
+  # This selects the FandomWikiProfile class
+  profile: "fandomwiki"
 
   # Profile-specific options (see cleaning_profiles README for details)
-  # These defaults are optimized for standard MediaWiki sites
+  # These defaults are optimized for Fandom sites
   config:
-    # Core Wiki Cleaning
+    # Fandom-Specific Cleaning
+    remove_fandom_ads: true         # Remove "Advertisement" markers
+    remove_fandom_promotions: true  # Remove "More Fandom", "Fan Central"
+    remove_community_content: true  # Remove community feed/discussions
+    remove_related_wikis: true      # Remove "Explore other wikis"
+    remove_fandom_footer: true      # Remove global footer navigation
+    
+    # Core Wiki Cleaning (Inherited from MediaWiki)
     remove_infoboxes: true          # Remove metadata tables at top
     remove_table_of_contents: true  # Remove auto-generated TOC
     remove_external_links: true     # Remove "External links" sections
@@ -226,10 +242,10 @@ result_filtering:
 # -----------------------------------------------------------------------------
 openwebui:
   # Knowledge base name in OpenWebUI
-  knowledge_name: "My Wiki"
+  knowledge_name: "My Fandom Wiki"
 
   # Description shown in OpenWebUI
-  description: "Comprehensive MediaWiki knowledge base for RAG"
+  description: "Comprehensive Fandom knowledge base for RAG"
 
   # Optional: Specify existing knowledge base ID to update (leave blank for new)
   # knowledge_id: "existing-kb-id-here"
@@ -259,12 +275,6 @@ retention:
   enabled: true
 
   # Number of timestamped backup directories to keep (not counting current/)
-  # Example with keep_backups: 2
-  #   outputs/mysite/
-  #   ├── current/              ← Always kept (active state)
-  #   ├── 2025-11-17_10-00-00/ ← Backup 1 (most recent)
-  #   ├── 2025-11-16_10-00-00/ ← Backup 2
-  #   └── 2025-11-15_10-00-00/ ← DELETE (exceeds limit)
   keep_backups: 2
 
   # Run cleanup automatically after each scrape
@@ -287,11 +297,6 @@ schedule:
   #   "0 0 * * 0"      = Weekly on Sunday midnight
   cron: "0 2 * * *"
 
-  # Interval settings (for type: interval)
-  # interval:
-  #   hours: 6         = Every 6 hours
-  #   minutes: 30      = Every 30 minutes
-
   # Timezone for scheduled runs
   timezone: "America/Los_Angeles"
 
@@ -305,49 +310,22 @@ schedule:
     delay_minutes: 15       # Wait 15 minutes between attempts
 
 # =============================================================================
-# COMMON MEDIAWIKI SITES
-# =============================================================================
-#
-# Wikipedia:
-#   base_url: "https://en.wikipedia.org"
-#   follow_patterns: ["^https://en\\.wikipedia\\.org/wiki/.*"]
-#
-# Fandom Wikis:
-#   base_url: "https://yourwiki.fandom.com"
-#   follow_patterns: ["^https://yourwiki\\.fandom\\.com/wiki/.*"]
-#   markdown_cleaning: profile: "fandomwiki"  # Use Fandom-specific profile
-#
-# Miraheze Wikis:
-#   base_url: "https://yourwiki.miraheze.org"
-#   follow_patterns: ["^https://yourwiki\\.miraheze\\.org/wiki/.*"]
-#
-# Self-hosted MediaWiki:
-#   base_url: "https://wiki.yourcompany.com"
-#   follow_patterns: ["^https://wiki\\.yourcompany\\.com/wiki/.*"]
-#
-# =============================================================================
 # TIPS AND BEST PRACTICES
 # =============================================================================
 #
-# 1. START SMALL: Test with max_depth: 1 first to verify patterns work
+# 1. FANDOM SPECIFICS: Fandom sites are heavy on JavaScript and ads.
+#    The combination of html_filtering (Stage 1) and the fandomwiki profile
+#    (Stage 2) is essential to get clean content.
 #
-# 2. RATE LIMITING: Adjust based on server capacity and your relationship
-#    - Public wikis: 1 req/sec (conservative)
-#    - Your own wiki: 2-5 req/sec (faster)
+# 2. RATE LIMITING: Fandom servers can be sensitive. Stick to 1 req/sec.
 #
-# 3. EXCLUDE PATTERNS: Add site-specific patterns you discover during testing
-#    Example: - ".*Index_of_.*" if wiki has many index pages
+# 3. EXCLUDE PATTERNS: Fandom has many community pages (User:, Talk:, Message_Wall:)
+#    that are not useful for RAG. The default exclude_patterns handle most of these.
 #
-# 4. CLEANING PROFILE: The mediawiki profile is optimized for embedding quality
-#    but you can disable specific cleaners if needed
+# 4. CLEANING PROFILE: The fandomwiki profile extends the mediawiki profile.
+#    It inherits all MediaWiki cleaning logic and adds Fandom-specific rules.
 #
-# 5. SCHEDULING: For frequently-updated wikis, use shorter intervals
-#    For stable wikis, weekly or monthly scraping is sufficient
-#
-# 6. TESTING: Always validate before first scrape:
-#    webowui validate --site mysite
-#
-# 7. INCREMENTAL UPDATES: After first scrape, only changed pages are uploaded
-#    to save API quota and processing time
+# 5. TESTING: Always validate before first scrape:
+#    webowui validate --site myfandom
 #
 # =============================================================================
