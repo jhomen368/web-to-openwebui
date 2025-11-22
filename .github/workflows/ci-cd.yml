@@ -7,13 +7,9 @@ on:
   pull_request:
     branches: [main]
 
+# Default permissions: least privilege (read-only)
 permissions:
   contents: read
-  pull-requests: write
-  issues: write
-  packages: write
-  security-events: write
-  actions: read
 
 env:
   REGISTRY: ghcr.io
@@ -24,9 +20,11 @@ jobs:
   lint:
     name: Python Linting
     runs-on: ubuntu-latest
+    permissions:
+      contents: read  # Checkout code only
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -54,9 +52,12 @@ jobs:
     name: Run Tests
     runs-on: ubuntu-latest
     needs: lint
+    permissions:
+      contents: read          # Checkout code
+      pull-requests: write    # Comment coverage on PRs
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -101,9 +102,13 @@ jobs:
     name: Docker Build & Security
     runs-on: ubuntu-latest
     needs: [lint, test]
+    permissions:
+      contents: read          # Checkout code
+      packages: write         # Push to GHCR
+      security-events: write  # Upload SARIF to Security tab
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Required for multi-arch builds
       - name: Set up QEMU
@@ -236,7 +241,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Extract version from tag
         id: version
