@@ -151,7 +151,7 @@ data:
         - ".mw-navigation"
         - ".mw-footer"
         - ".toc"
-      options:
+      markdown_options:
         include_images: true
         include_links: true
         preserve_structure: true
