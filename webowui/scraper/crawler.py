@@ -4,6 +4,7 @@ Main web crawler using crawl4ai.
 
 import logging
 import math
+import re
 from datetime import datetime
 
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
@@ -128,12 +129,17 @@ class WikiCrawler:
         # Build filter chain from config
         filters = []
         if self.config.follow_patterns:
-            filters.append(URLPatternFilter(patterns=self.config.follow_patterns))
+            # Config patterns are regex (e.g. ^https://...), so we must compile them
+            # and use use_glob=False
+            compiled_follow = [re.compile(p) for p in self.config.follow_patterns]
+            filters.append(URLPatternFilter(patterns=compiled_follow, use_glob=False))
 
         if self.config.exclude_patterns:
-            # Note: URLPatternFilter doesn't support exclude patterns directly in the same way
-            # as our old strategy, but we can use it for positive matching.
-            pass
+            # Config patterns are regex, so we compile them and use reverse=True for exclusion
+            compiled_exclude = [re.compile(p) for p in self.config.exclude_patterns]
+            filters.append(
+                URLPatternFilter(patterns=compiled_exclude, reverse=True, use_glob=False)
+            )
 
         exclude_domains = getattr(self.config, "exclude_domains", [])
         if exclude_domains:
