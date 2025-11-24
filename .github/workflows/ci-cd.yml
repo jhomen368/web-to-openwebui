@@ -158,7 +158,7 @@ jobs:
 
       # SECURITY SCANNING (Main Branch Only)
       # Tag releases skip security scanning - only scanned weekly and on main branch
-      
+
       - name: Security Scan (Main Branch)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: aquasecurity/trivy-action@0.33.1
@@ -228,7 +228,7 @@ jobs:
         id: extract_notes
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
-          
+
           # Extract the specific version section from CHANGELOG.md
           # Finds "## [VERSION]" and prints until next "## [" or EOF
           awk -v ver="$VERSION" '
@@ -237,20 +237,20 @@ jobs:
             /^## \[/ { if (in_block) exit }
             in_block { print }
           ' CHANGELOG.md > release_notes.md
-          
+
           # Check if release_notes.md is empty or only whitespace
           if [ ! -s release_notes.md ] || ! grep -q "[^[:space:]]" release_notes.md; then
             echo "⚠️  No changelog entry found for v$VERSION in CHANGELOG.md"
             echo "Using default release notes."
             cat > release_notes.md << 'EOF'
           ## Changes
-          
+
           See commit history for detailed changes.
-          
+
           For changelog entries, please ensure CHANGELOG.md contains a section:
           ```
           ## [$VERSION] - YYYY-MM-DD
-          
+
           ### Added/Changed/Fixed
           - Your changes here
           ```
@@ -275,7 +275,7 @@ jobs:
             --title "Release ${{ github.ref_name }}" \
             --notes-file release_notes.md \
             --notes "
-          
+
           ## Docker Images
           - \`ghcr.io/${{ github.repository }}:${{ github.ref_name }}\`
           - \`ghcr.io/${{ github.repository }}:latest\`

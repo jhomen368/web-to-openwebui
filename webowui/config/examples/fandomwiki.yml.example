@@ -136,19 +136,19 @@ html_filtering:
 
   # Basic HTML Filters (Always active if defined)
   # ---------------------------------------------
-  
+
   # HTML tags to remove (standard HTML tag names ONLY, no classes/IDs)
   # Optimal Safe Set for Fandom (Tested on Escape from Tarkov Wiki):
-  excluded_tags: 
+  excluded_tags:
     - nav
     - footer
     - aside
     - header
-  
+
   # Link filtering
   exclude_external_links: true      # Remove links to external sites
   exclude_social_media_links: true  # Remove social media share buttons
-  
+
   # Block filtering (crawl4ai word_count_threshold)
   # Remove HTML blocks with fewer than N words
   # Set to 10 to prevent aggressive filtering of short but valid content
@@ -202,7 +202,7 @@ markdown_cleaning:
     remove_community_content: true  # Remove community feed/discussions
     remove_related_wikis: true      # Remove "Explore other wikis"
     remove_fandom_footer: true      # Remove global footer navigation
-    
+
     # Core Wiki Cleaning (Inherited from MediaWiki)
     remove_infoboxes: true          # Remove metadata tables at top
     remove_table_of_contents: true  # Remove auto-generated TOC
@@ -211,12 +211,12 @@ markdown_cleaning:
     remove_wiki_meta: true          # Remove "Work in progress" banners
     remove_navigation_boilerplate: true # Remove "Jump to navigation"
     remove_template_links: true     # Remove [v] [t] [e] links
-    
+
     # NEW: Additional Noise Removal
     remove_media: true              # Gallery/Images/Videos sections
     remove_references_section: true # References/Notes/Footnotes
     remove_header_navigation: true  # Top navigation (Search, etc.)
-    
+
     # Optional Filtering
     remove_citations: true          # Remove [1][2] markers
     remove_categories: true         # Remove category links at bottom

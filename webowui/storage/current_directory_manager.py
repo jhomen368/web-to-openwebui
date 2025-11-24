@@ -402,7 +402,8 @@ class CurrentDirectoryManager:
             json.dump(delta_log, f, indent=2)
 
     def _append_delta_log(self, delta_entry: dict):
-        """Append entry to delta log."""
+        """Append entry to delta log with simple rotation."""
+
         if not self.delta_log_file.exists():
             self._create_delta_log(delta_entry)
             return
@@ -415,6 +416,30 @@ class CurrentDirectoryManager:
             self._create_delta_log(delta_entry)
             return
 
+        deltas = delta_log.get("deltas", [])
+
+        # Rotate log if it exceeds 100 entries
+        if len(deltas) > 100:
+            # Archive oldest entries to delta_log_old.json
+            old_file = self.current_dir / "delta_log_old.json"
+            old_deltas = []
+            if old_file.exists():
+                try:
+                    with open(old_file) as f:
+                        old_deltas = json.load(f).get("deltas", [])
+                except Exception:
+                    old_deltas = []
+
+            # Move oldest 50 entries to archive
+            old_deltas.extend(deltas[:50])
+            with open(old_file, "w") as f:
+                json.dump({"deltas": old_deltas}, f, indent=2)
+
+            # Retain only the most recent 50 entries in the active log
+            delta_log["deltas"] = deltas[50:]
+            logger.info("Delta log rotated: moved 50 old entries to delta_log_old.json")
+
+        # Append new entry
         delta_log["deltas"].append(delta_entry)
 
         with open(self.delta_log_file, "w") as f:

@@ -107,19 +107,19 @@ html_filtering:
 
   # Basic HTML Filters (Always active if defined)
   # ---------------------------------------------
-  
+
   # HTML tags to remove (standard HTML tag names ONLY, no classes/IDs)
   # Optimal Safe Set for Maxroll:
-  excluded_tags: 
+  excluded_tags:
     - nav
     - footer
     - aside
     - header
-  
+
   # Link filtering
   exclude_external_links: true      # Remove links to external sites
   exclude_social_media_links: true  # Remove social media share buttons
-  
+
   # Block filtering (crawl4ai word_count_threshold)
   # Remove HTML blocks with fewer than N words
   # Set to 10 to prevent aggressive filtering of short but valid content
@@ -171,7 +171,7 @@ markdown_cleaning:
     remove_comments: true           # Remove comments section
     remove_ads: true                # Remove ad placeholders
     remove_metadata: true           # Remove author/date metadata
-    
+
     # Optional Filtering
     filter_dead_links: false        # Remove links to non-existent pages
 

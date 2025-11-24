@@ -232,3 +232,60 @@ async def test_execute_scrape_with_retry(mock_app_config):
         with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
             await _execute_scrape_with_retry("test_site")
             assert mock_scrape.call_count == 2  # Max attempts
+
+
+def test_cleanup_database(scheduler, tmp_path):
+    """Test that old database records are cleaned up."""
+    import sqlite3
+    from datetime import datetime, timedelta
+
+    # Create a dummy database
+    db_path = tmp_path / "outputs" / "scheduler.db"
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Create table
+    cursor.execute("CREATE TABLE apscheduler_jobs (id TEXT, next_run_time REAL, job_state BLOB)")
+
+    # Insert old record (31 days ago)
+    old_time = (datetime.now() - timedelta(days=31)).timestamp()
+    cursor.execute("INSERT INTO apscheduler_jobs VALUES (?, ?, ?)", ("old_job", old_time, b""))
+
+    # Insert new record (1 day ago)
+    new_time = (datetime.now() - timedelta(days=1)).timestamp()
+    cursor.execute("INSERT INTO apscheduler_jobs VALUES (?, ?, ?)", ("new_job", new_time, b""))
+
+    conn.commit()
+    conn.close()
+
+    # Run cleanup
+    scheduler._cleanup_database()
+
+    # Verify old record removed
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM apscheduler_jobs")
+    rows = cursor.fetchall()
+    conn.close()
+
+    # Debug output
+    print(f"Rows found: {rows}")
+
+    # The scheduler fixture uses a different tmp_path than the one passed to this test function
+    # We need to make sure the scheduler uses the same outputs_dir as our test database
+    scheduler.outputs_dir = tmp_path / "outputs"
+
+    # Run cleanup again with correct path
+    scheduler._cleanup_database()
+
+    # Verify old record removed
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM apscheduler_jobs")
+    rows = cursor.fetchall()
+    conn.close()
+
+    assert len(rows) == 1
+    assert rows[0][0] == "new_job"

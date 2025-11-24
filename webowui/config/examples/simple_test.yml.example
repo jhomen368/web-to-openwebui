@@ -105,14 +105,14 @@ html_filtering:
 
   # Basic HTML Filters (Always active if defined)
   # ---------------------------------------------
-  
+
   # HTML tags to remove (standard HTML tag names ONLY, no classes/IDs)
   # excluded_tags: [nav, footer, aside, header]
-  
+
   # Link filtering
   # exclude_external_links: true      # Remove links to external sites
   # exclude_social_media_links: true  # Remove social media share buttons
-  
+
   # Block filtering (crawl4ai word_count_threshold)
   # Remove HTML blocks with fewer than N words
   min_block_words: 10

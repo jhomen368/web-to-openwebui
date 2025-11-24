@@ -1130,7 +1130,7 @@ class OpenWebUIClient:
         # Get or create knowledge
         if knowledge_id:
             logger.info(f"Using existing knowledge: {knowledge_id}")
-            knowledge: dict | None = {"id": knowledge_id}
+            knowledge: dict | None = {"id": knowledge_id, "name": knowledge_name}
         else:
             knowledge = await self.create_knowledge(knowledge_name, description)
             if not knowledge:
@@ -1139,7 +1139,7 @@ class OpenWebUIClient:
 
         assert knowledge is not None
         knowledge_id = cast(str, knowledge["id"])
-        knowledge_name = knowledge["name"]
+        knowledge_name = knowledge.get("name", knowledge_name)
 
         previous_file_map = previous_file_map or {}
         new_file_map = {}

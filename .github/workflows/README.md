@@ -25,11 +25,11 @@ graph TD
     PR --> LINT
     MAIN --> LINT
     TAG --> LINT
-    
+
     %% Divergence
     BUILD -- Main --> SCAN
     BUILD -- Tag --> PUBLISH
-    
+
     %% Independent
     WEEKLY --> SCAN
 
@@ -38,7 +38,7 @@ graph TD
     style MAIN fill:#fff3e0,stroke:#f57c00
     style TAG fill:#f3e5f5,stroke:#7b1fa2
     style WEEKLY fill:#e8f5e9,stroke:#388e3c
-    
+
     style Validation fill:#f5f5f5,stroke:#333,stroke-dasharray: 5 5
     style SCAN fill:#ffebee,stroke:#c62828
     style PUBLISH fill:#c8e6c9,stroke:#2e7d32

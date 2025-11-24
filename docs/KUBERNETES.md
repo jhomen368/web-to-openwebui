@@ -82,7 +82,7 @@ data:
       base_url: "https://monsterhunterwiki.org"
       start_urls:
         - "https://monsterhunterwiki.org/wiki/Main_Page"
-      
+
     crawling:
       strategy: "bfs"
       max_depth: 1
@@ -101,31 +101,31 @@ data:
           - ".*Help:.*"
           - ".*action=edit.*"
           - ".*action=history.*"
-          
+
           # Wiki administrative/meta pages
           - ".*[Ww]iki:[Aa]bout"
           - ".*[Ww]iki:.*[Dd]isclaimer"
           - ".*[Ww]iki:[Cc]opyrights?"
           - ".*[Ww]iki:[Pp]rivacy"
           - ".*[Ww]iki:[Cc]ommunity"
-          
+
           # Edit/action pages and redirects
           - ".*/edit(\\?.*)?$"
           - ".*&action=(edit|history|delete|protect)"
           - ".*\\?redlink="
-          
+
           # Version history and changelog pages
           - ".*[Vv]ersion.*[Hh]istory"
           - ".*[Cc]hangelog"
           - ".*[Pp]atch.*[Nn]otes"
-          
+
           # Image and file description pages
           - ".*Image:.*"
       rate_limit:
         requests_per_second: 1
         delay_between_requests: 1.0
         max_retries: 3
-    
+
     html_filtering:
       excluded_tags:
         - nav
@@ -135,12 +135,12 @@ data:
       exclude_external_links: true
       exclude_social_media_links: true
       min_block_words: 10
-      
+
       pruning:
         enabled: false
         threshold: 0.55
         min_words: 50
-    
+
     markdown_conversion:
       content_selector: "body"
       remove_selectors:
@@ -156,17 +156,17 @@ data:
         include_links: true
         preserve_structure: true
         heading_style: "atx"
-    
+
     result_filtering:
       min_page_length: 50
       max_page_length: 500000
       allowed_content_types:
         - "text/html"
       filter_dead_links: true
-    
+
     markdown_cleaning:
       profile: "mediawiki"
-    
+
     openwebui:
       knowledge_name: "Monster Hunter"
       description: "Comprehensive Monster Hunter game mechanics, monsters, weapons, armor, and equipment database"
@@ -175,12 +175,12 @@ data:
       preserve_deleted_files: false
       auto_rebuild_state: true
       rebuild_confidence_threshold: "medium"
-    
+
     retention:
       enabled: true
       keep_backups: 2
       auto_cleanup: true
-    
+
     schedule:
       enabled: true
       type: "cron"
@@ -199,7 +199,7 @@ data:
       base_url: "https://www.poe2wiki.net"
       start_urls:
         - "https://www.poe2wiki.net/wiki/Path_of_Exile_2_Wiki"
-      
+
     crawling:
       strategy: "bfs"
       max_depth: 1
@@ -218,31 +218,31 @@ data:
           - ".*Help:.*"
           - ".*action=edit.*"
           - ".*action=history.*"
-          
+
           # Wiki administrative/meta pages
           - ".*[Ww]iki:[Aa]bout"
           - ".*[Ww]iki:.*[Dd]isclaimer"
           - ".*[Ww]iki:[Cc]opyrights?"
           - ".*[Ww]iki:[Pp]rivacy"
           - ".*[Ww]iki:[Cc]ommunity"
-          
+
           # Edit/action pages and redirects
           - ".*/edit(\\?.*)?$"
           - ".*&action=(edit|history|delete|protect)"
           - ".*\\?redlink="
-          
+
           # Version history and changelog pages
           - ".*[Vv]ersion.*[Hh]istory"
           - ".*[Cc]hangelog"
           - ".*[Pp]atch.*[Nn]otes"
-          
+
           # Image and file description pages
           - ".*Image:.*"
       rate_limit:
         requests_per_second: 1
         delay_between_requests: 1.0
         max_retries: 3
-    
+
     html_filtering:
       excluded_tags:
         - nav
@@ -252,12 +252,12 @@ data:
       exclude_external_links: true
       exclude_social_media_links: true
       min_block_words: 10
-      
+
       pruning:
         enabled: false
         threshold: 0.55
         min_words: 50
-    
+
     markdown_conversion:
       content_selector: "body"
       remove_selectors:
@@ -273,13 +273,13 @@ data:
         include_links: true
         preserve_structure: true
         heading_style: "atx"
-    
+
     result_filtering:
       min_page_length: 50
       max_page_length: 500000
       allowed_content_types:
         - "text/html"
-    
+
     markdown_cleaning:
       profile: "mediawiki"
       # config:
@@ -289,7 +289,7 @@ data:
       #   remove_media: true
       #   remove_references_section: true
       #   remove_header_navigation: true
-    
+
     openwebui:
       knowledge_name: "Path of Exile 2"
       description: "Path of Exile 2 game mechanics, character classes, skills, items, and endgame content"
@@ -298,12 +298,12 @@ data:
       preserve_deleted_files: false
       auto_rebuild_state: true
       rebuild_confidence_threshold: "medium"
-    
+
     retention:
       enabled: true
       keep_backups: 2
       auto_cleanup: true
-    
+
     schedule:
       enabled: true
       type: "cron"

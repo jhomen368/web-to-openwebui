@@ -159,7 +159,7 @@ html_filtering:
 
   # Basic HTML Filters (Always active if defined)
   # ---------------------------------------------
-  
+
   # HTML tags to remove (standard HTML tag names ONLY, no classes/IDs)
   # excluded_tags:
   #   - nav
@@ -167,11 +167,11 @@ html_filtering:
   #   - aside
   #   - script
   #   - style
-  
+
   # Link filtering
   # exclude_external_links: false
   # exclude_social_media_links: false
-  
+
   # Block filtering (crawl4ai word_count_threshold)
   # Remove HTML blocks with fewer than N words
   # min_block_words: 10

@@ -66,6 +66,11 @@ repos:
         additional_dependencies: ['bandit[toml]']
         exclude: '^tests/'
 
+  - repo: https://github.com/gitguardian/ggshield
+    rev: v1.27.0
+    hooks:
+      - id: ggshield
+
   # Markdown linting (documentation quality)
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.40.0

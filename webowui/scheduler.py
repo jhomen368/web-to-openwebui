@@ -117,6 +117,9 @@ class ScraperScheduler:
         logger.info("Starting scheduler daemon...")
         self.load_schedules()
 
+        # Clean up old database records on startup
+        self._cleanup_database()
+
         if not self.jobs:
             logger.warning("No scheduled jobs configured!")
             logger.warning("At least one site must have schedule.enabled: true")
@@ -159,3 +162,36 @@ class ScraperScheduler:
         logger.info(f"Received signal {signum}, initiating graceful shutdown...")
         self.shutdown()
         sys.exit(0)
+
+    def _cleanup_database(self):
+        """Remove job history older than 30 days."""
+        import sqlite3
+        from datetime import datetime, timedelta
+
+        db_path = self.outputs_dir / "scheduler.db"
+
+        if not db_path.exists():
+            return
+
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+
+            # Delete records older than 30 days
+            cutoff = (datetime.now() - timedelta(days=30)).timestamp()
+            cursor.execute(
+                "DELETE FROM apscheduler_jobs WHERE next_run_time < ?",
+                (cutoff,),
+            )
+
+            deleted = cursor.rowcount
+            conn.commit()
+
+            # Reclaim unused disk space
+            conn.execute("VACUUM")
+            conn.close()
+
+            if deleted > 0:
+                logger.info(f"DB cleanup: removed {deleted} old job records")
+        except Exception as e:
+            logger.warning(f"DB cleanup failed (non-critical): {e}")

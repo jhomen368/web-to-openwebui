@@ -10,20 +10,18 @@ from typing import cast
 
 import click
 from rich.console import Console
-from rich.logging import RichHandler
 from rich.table import Table
 
 from .config import SiteConfig, app_config
+from .logging_config import setup_logging
 from .scraper import WikiCrawler
 from .state_manager import StateManager
 from .storage import CurrentDirectoryManager, MetadataTracker, OutputManager
 from .storage.retention_manager import RetentionManager
 from .uploader import OpenWebUIClient
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO, format="%(message)s", handlers=[RichHandler(rich_tracebacks=True)]
-)
+# Setup logging with rotation
+setup_logging(app_config.logs_dir, app_config.log_level)
 logger = logging.getLogger(__name__)
 
 console = Console()

@@ -930,3 +930,45 @@ class TestCurrentDirectoryManagerExtended:
 
         # Verify file wasn't recreated
         assert not (current_dir / "metadata.json").exists()
+
+
+def test_delta_log_rotation(tmp_path):
+    """Test that delta log rotates when it exceeds 100 entries."""
+    from webowui.storage.current_directory_manager import CurrentDirectoryManager
+
+    # Setup manager manually since fixture is missing/failing
+    base_dir = tmp_path / "outputs"
+    base_dir.mkdir()
+    manager = CurrentDirectoryManager(base_dir, "test_site")
+    manager.current_dir.mkdir(parents=True)
+
+    # Create a delta log with 101 entries
+    deltas = [{"timestamp": f"2025-01-01T{i:02d}:00:00", "operation": "test"} for i in range(101)]
+    delta_log = {"deltas": deltas}
+
+    manager.delta_log_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(manager.delta_log_file, "w") as f:
+        json.dump(delta_log, f)
+
+    # Add one more entry to trigger rotation
+    new_entry = {"timestamp": "2025-01-02T00:00:00", "operation": "new"}
+    manager._append_delta_log(new_entry)
+
+    # Verify rotation
+    with open(manager.delta_log_file) as f:
+        current_log = json.load(f)
+
+    # Should have 51 entries (101 - 50 + 1 new)
+    assert len(current_log["deltas"]) == 52
+    assert current_log["deltas"][-1] == new_entry
+
+    # Verify archive created
+    archive_file = manager.current_dir / "delta_log_old.json"
+    assert archive_file.exists()
+
+    with open(archive_file) as f:
+        archive_log = json.load(f)
+
+    # Should have 50 archived entries
+    assert len(archive_log["deltas"]) == 50
+    assert archive_log["deltas"][0] == deltas[0]
