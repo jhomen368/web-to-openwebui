@@ -236,6 +236,14 @@ def mock_site_config_obj(sample_site_config):
     config.content_filter_enabled = False
     config.content_filter_threshold = 0.6
     config.content_filter_min_words = 50
+    config.remove_selectors = []
+    config.content_selector = "body"
+    config.schedule_timeout_minutes = 60
+    config.min_block_words = 10
+    config.pruning_enabled = False
+    config.pruning_threshold = 0.6
+    config.pruning_min_words = 50
+    config.max_pages = None
 
     # Cleaning config
     config.min_content_length = 100
