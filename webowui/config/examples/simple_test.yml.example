@@ -163,10 +163,6 @@ result_filtering:
   # Maximum page length (characters) - prevent memory issues
   max_page_length: 500000
 
-  # Only scrape HTML pages
-  allowed_content_types:
-    - "text/html"
-
 # ============================================================================
 # THAT'S IT! This is the minimum configuration needed.
 #

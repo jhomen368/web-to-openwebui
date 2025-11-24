@@ -200,10 +200,25 @@ class WikiCrawler:
         exclude_external_links = getattr(self.config, "exclude_external_links", False)
         exclude_social_media = getattr(self.config, "exclude_social_media", False)
 
+        # Map content_selector to css_selector
+        css_selector = getattr(self.config, "content_selector", "body")
+        if css_selector == "body":
+            css_selector = None  # Default behavior
+
+        # Map remove_selectors to excluded_selector (comma-separated string)
+        remove_selectors = getattr(self.config, "remove_selectors", [])
+        excluded_selector = ", ".join(remove_selectors) if remove_selectors else None
+
+        # Map timeout_minutes to page_timeout (ms)
+        timeout_minutes = getattr(self.config, "schedule_timeout_minutes", 60)
+        page_timeout = timeout_minutes * 60 * 1000
+
         return CrawlerRunConfig(
             deep_crawl_strategy=deep_crawl_strategy,
             stream=use_streaming,
             # Content filtering (Stage 1)
+            css_selector=css_selector,
+            excluded_selector=excluded_selector,
             excluded_tags=excluded_tags,
             exclude_external_links=exclude_external_links,
             exclude_social_media_links=exclude_social_media,
@@ -211,7 +226,7 @@ class WikiCrawler:
             # Markdown generation
             markdown_generator=self._create_markdown_generator(),
             cache_mode=CacheMode.BYPASS,
-            page_timeout=30000,
+            page_timeout=page_timeout,
         )
 
     def _create_markdown_generator(self):

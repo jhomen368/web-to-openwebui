@@ -99,7 +99,6 @@ class TestSiteConfigBasics:
                 "rate_limit": {
                     "requests_per_second": 1,
                     "delay_between_requests": 1.0,
-                    "max_retries": 5,
                 },
             },
         }
@@ -109,7 +108,6 @@ class TestSiteConfigBasics:
 
         assert config.requests_per_second == 1
         assert config.delay_between_requests == 1.0
-        assert config.max_retries == 5
 
     def test_site_config_filters(self, tmp_config_dir: Path):
         """Test content filtering configuration."""

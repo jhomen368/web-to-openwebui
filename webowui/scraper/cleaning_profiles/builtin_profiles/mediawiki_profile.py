@@ -164,10 +164,20 @@ class MediaWikiProfile(BaseCleaningProfile):
         in_table = False
         table_start = -1
         lines_since_last_content = 0
+        stop_looking = False
 
         for i, line in enumerate(lines):
-            # Detect table start (must be near top of document)
-            if i < 50 and "|" in line and ("---" in line or line.strip().startswith("|")):
+            # Stop looking if we hit a section header (H2+)
+            if not stop_looking and line.strip().startswith("##"):
+                stop_looking = True
+
+            # Detect table start (must be near top of document AND before any headers)
+            if (
+                not stop_looking
+                and i < 50
+                and "|" in line
+                and ("---" in line or line.strip().startswith("|"))
+            ):
                 if not in_table:
                     in_table = True
                     table_start = i
@@ -252,11 +262,11 @@ class MediaWikiProfile(BaseCleaningProfile):
             r"^###\s+Namespaces\s*$",
             r"^###\s+Page\s+actions\s*$",
             r"^###\s+More\s*$",
-            r"^\[Create\s+account\]",
-            r"^\[Log\s+in\]",
-            r"^\[Read\]",
-            r"^\[View\s+source\]",
-            r"^\[History\]",
+            r"^[\*\-]?\s*\[Create\s+account\]",
+            r"^[\*\-]?\s*\[Log\s+in\]",
+            r"^[\*\-]?\s*\[Read\]",
+            r"^[\*\-]?\s*\[View\s+source\]",
+            r"^[\*\-]?\s*\[History\]",
         ]
 
         # Also skip lines that are just a single link at the start (navigation menus)

@@ -91,7 +91,6 @@ class SiteConfig:
         rate_limit = crawling.get("rate_limit", {})
         self.requests_per_second = rate_limit.get("requests_per_second", 2)
         self.delay_between_requests = rate_limit.get("delay_between_requests", 0.5)
-        self.max_retries = rate_limit.get("max_retries", 3)
 
         # ---------------------------------------------------------------------
         # PIPELINE STAGE 1: HTML Filtering
@@ -131,7 +130,6 @@ class SiteConfig:
         result_filtering = config_dict.get("result_filtering", {})
         self.min_page_length = result_filtering.get("min_page_length", 100)
         self.max_page_length = result_filtering.get("max_page_length", 500000)
-        self.allowed_content_types = result_filtering.get("allowed_content_types", ["text/html"])
         self.filter_dead_links = result_filtering.get("filter_dead_links", False)
 
         # Open Web UI

@@ -102,7 +102,6 @@ crawling:
   rate_limit:
     requests_per_second: 1      # 1 request per second (conservative)
     delay_between_requests: 1.0  # Additional 1 second delay
-    max_retries: 3               # Retry failed requests 3 times
 
 # -----------------------------------------------------------------------------
 # CONTENT PROCESSING PIPELINE
@@ -216,10 +215,6 @@ result_filtering:
 
   # Maximum page length (characters) - prevent memory issues
   max_page_length: 500000
-
-  # Only scrape HTML pages
-  allowed_content_types:
-    - "text/html"
 
 # -----------------------------------------------------------------------------
 # OpenWebUI Integration
