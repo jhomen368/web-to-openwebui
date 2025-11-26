@@ -171,6 +171,7 @@ markdown_cleaning:
     remove_comments: true           # Remove comments section
     remove_ads: true                # Remove ad placeholders
     remove_metadata: true           # Remove author/date metadata
+    exclude_archived: true          # Exclude guides marked as archived
 
     # Optional Filtering
     filter_dead_links: false        # Remove links to non-existent pages

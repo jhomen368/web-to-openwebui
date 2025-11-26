@@ -99,6 +99,11 @@ class OutputManager:
                     result.markdown, metadata={"url": result.url, "site_config": self.config}
                 )
 
+                # Skip saving if content is empty after cleaning
+                if not cleaned_markdown.strip():
+                    logger.info(f"Skipping {result.url} - content empty after cleaning")
+                    return None
+
                 logger.debug(f"Applied {self.config.cleaning_profile_name} profile to {result.url}")
             except Exception as e:
                 logger.error(

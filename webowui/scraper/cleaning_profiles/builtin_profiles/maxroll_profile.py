@@ -30,6 +30,10 @@ class MaxrollProfile(BaseCleaningProfile):
         Returns:
             Cleaned content
         """
+        # Check for archived content if configured
+        if self.config.get("exclude_archived", True) and self._is_archived(content):
+            return ""
+
         # Remove global navigation and sidebar (usually at the start)
         # Pattern: Starts with empty link to home, followed by list of games
         content = self._remove_global_nav(content)
@@ -45,6 +49,17 @@ class MaxrollProfile(BaseCleaningProfile):
         content = content.strip()
 
         return content
+
+    def _is_archived(self, content: str) -> bool:
+        """Check if the content is from an archived guide."""
+        archived_markers = [
+            "This build was archived",
+            "The contents of this build might be outdated",
+            "Archived Post",
+            "Early AccessArchived",  # Badge concatenation
+        ]
+
+        return any(marker in content for marker in archived_markers)
 
     def _remove_global_nav(self, content: str) -> str:
         """Remove global navigation and sidebar."""
@@ -182,5 +197,10 @@ class MaxrollProfile(BaseCleaningProfile):
             "properties": {
                 "remove_nav": {"type": "boolean", "default": True},
                 "remove_footer": {"type": "boolean", "default": True},
+                "exclude_archived": {
+                    "type": "boolean",
+                    "default": True,
+                    "description": "Exclude guides marked as archived",
+                },
             },
         }
