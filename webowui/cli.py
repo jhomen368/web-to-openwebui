@@ -20,6 +20,13 @@ from .storage import CurrentDirectoryManager, MetadataTracker, OutputManager
 from .storage.retention_manager import RetentionManager
 from .uploader import OpenWebUIClient
 
+
+class UploadError(Exception):
+    """Raised when an upload operation fails."""
+
+    pass
+
+
 # Setup logging with rotation
 setup_logging(app_config.logs_dir, app_config.log_level)
 logger = logging.getLogger(__name__)
@@ -163,18 +170,21 @@ def upload(
     # Determine cleanup_untracked: CLI flag overrides config (defaults to False - opt-in)
     effective_cleanup = cleanup_untracked or site_config.cleanup_untracked
 
-    asyncio.run(
-        _upload_scrape(
-            site,
-            from_timestamp,
-            incremental,
-            target_knowledge_name,
-            site_config.knowledge_description,
-            target_knowledge_id,
-            effective_keep_files,
-            effective_cleanup,  # Pass cleanup option
+    try:
+        asyncio.run(
+            _upload_scrape(
+                site,
+                from_timestamp,
+                incremental,
+                target_knowledge_name,
+                site_config.knowledge_description,
+                target_knowledge_id,
+                effective_keep_files,
+                effective_cleanup,  # Pass cleanup option
+            )
         )
-    )
+    except UploadError:
+        sys.exit(1)
 
 
 async def _upload_scrape(
@@ -195,7 +205,7 @@ async def _upload_scrape(
         console.print("[red]OpenWebUI configuration errors:[/red]")
         for error in api_errors:
             console.print(f"  - {error}")
-        sys.exit(1)
+        raise UploadError("Configuration errors")
 
     # Determine upload source
     if from_timestamp:
@@ -205,7 +215,7 @@ async def _upload_scrape(
 
         if not scrape:
             console.print(f"[red]Scrape not found: {from_timestamp}[/red]")
-            sys.exit(1)
+            raise UploadError(f"Scrape not found: {from_timestamp}")
 
         content_dir = Path(scrape["scrape_dir"]) / "content"
         upload_source = from_timestamp
@@ -223,7 +233,7 @@ async def _upload_scrape(
             console.print(f"[red]Current directory does not exist for {site_name}[/red]")
             console.print(f"  Run: [blue]webowui rebuild-current --site {site_name}[/blue]")
             console.print("  Or use: [blue]--from-timestamp <timestamp>[/blue]")
-            sys.exit(1)
+            raise UploadError(f"Current directory does not exist for {site_name}")
 
         content_dir = current_manager.content_dir
         upload_source = "current"
@@ -293,7 +303,7 @@ async def _upload_scrape(
     connected = await client.test_connection()
     if not connected:
         console.print("[red]Failed to connect to OpenWebUI API[/red]")
-        sys.exit(1)
+        raise UploadError("Failed to connect to OpenWebUI API")
 
     # Use StateManager for clean state detection and auto-rebuild
     if from_timestamp is None:
@@ -375,7 +385,7 @@ async def _upload_scrape(
 
     if "error" in result:
         console.print(f"[red]Upload failed: {result['error']}[/red]")
-        sys.exit(1)
+        raise UploadError(f"Upload failed: {result['error']}")
 
     # Save upload status
     if from_timestamp:
