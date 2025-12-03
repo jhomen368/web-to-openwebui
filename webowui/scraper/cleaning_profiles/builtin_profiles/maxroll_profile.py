@@ -148,6 +148,8 @@ class MaxrollProfile(BaseCleaningProfile):
             r"© \d{4} Maxroll",
             r"Maxroll is a registered trademark",
             r"^\[\]\(https://twitter\.com/maxrollgg\)",
+            r"^## Related Posts",
+            r"^## Changelog",
         ]
 
         # Find the start of the footer and truncate

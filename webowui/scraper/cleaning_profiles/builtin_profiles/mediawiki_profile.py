@@ -39,6 +39,7 @@ class MediaWikiProfile(BaseCleaningProfile):
         remove_media = self.config.get("remove_media", True)
         remove_references_section = self.config.get("remove_references_section", True)
         remove_header_navigation = self.config.get("remove_header_navigation", True)
+        custom_header_patterns = self.config.get("custom_header_patterns", [])
 
         # Step 1: Remove wiki meta messages early (before main extraction)
         if remove_wiki_meta:
@@ -50,7 +51,7 @@ class MediaWikiProfile(BaseCleaningProfile):
 
         # Step 3: Remove header navigation (Anonymous, Search, etc.)
         if remove_header_navigation:
-            content = self._remove_header_navigation(content)
+            content = self._remove_header_navigation(content, custom_header_patterns)
 
         # Step 4: Remove table of contents
         if remove_table_of_contents:
@@ -241,12 +242,15 @@ class MediaWikiProfile(BaseCleaningProfile):
 
         return content
 
-    def _remove_header_navigation(self, content: str) -> str:
+    def _remove_header_navigation(
+        self, content: str, custom_patterns: list[str] | None = None
+    ) -> str:
         """
         Remove top-of-page navigation elements (Anonymous, Search, etc.).
 
         Args:
             content: Content with potential header navigation
+            custom_patterns: Optional list of additional regex patterns to skip
 
         Returns:
             Content with header navigation removed
@@ -264,19 +268,46 @@ class MediaWikiProfile(BaseCleaningProfile):
             r"^###\s+More\s*$",
             r"^[\*\-]?\s*\[Create\s+account\]",
             r"^[\*\-]?\s*\[Log\s+in\]",
+            r"^[\*\-]?\s*\[Page\]",
             r"^[\*\-]?\s*\[Read\]",
             r"^[\*\-]?\s*\[View\s+source\]",
             r"^[\*\-]?\s*\[History\]",
+            r"^[\*\-]?\s*\[Main\s+Page\]",
+            r"^[\*\-]?\s*\[Discussion\]",
+            r"^[\*\-]?\s*More\s*$",
+            r"^You can view its source",
+            r"^###\s+Quick\s+Access\s*$",
+            r"^###\s+Sister\s+Sites\s*$",
+            r"^##\s+Wiki\s+tools\s*$",
+            r"^###\s+Wiki\s+tools\s*$",
+            r"^##\s+Page\s+tools\s*$",
+            r"^###\s+Page\s+tools\s*$",
+            r"^###\s+User\s+page\s+tools\s*$",
+            r"^##\s+Navigation\s*$",
+            r"^###\s+Navigation\s*$",
+            r"^##\s+Content\s+by\s+Game\s*$",
+            r"^###\s+Legacy\s+Games\s*$",
+            r"^##\s+Content\s+by\s+Topic\s*$",
         ]
+
+        if custom_patterns:
+            skip_patterns.extend(custom_patterns)
 
         # Also skip lines that are just a single link at the start (navigation menus)
         # e.g. [Armor](...)
 
-        content_started = False
-
         for i, line in enumerate(lines):
-            if content_started:
-                cleaned_lines.append(line)
+            # Check if line matches skip patterns
+            # We check this for all lines in the first 100 lines to catch nav
+            # that appears after the page title
+            should_skip = False
+            if i < 100:
+                for pattern in skip_patterns:
+                    if re.match(pattern, line.strip()):
+                        should_skip = True
+                        break
+
+            if should_skip:
                 continue
 
             # If line is empty, skip
@@ -284,20 +315,11 @@ class MediaWikiProfile(BaseCleaningProfile):
                 cleaned_lines.append(line)  # Preserve blank lines between header and content
                 continue
 
-            # Check if line matches skip patterns
-            should_skip = False
-            for pattern in skip_patterns:
-                if re.match(pattern, line.strip()):
-                    should_skip = True
-                    break
-
-            if should_skip:
-                continue
-
             # Check for navigation links (lines that are just a link)
             # But be careful not to skip the main title or intro text
             # Heuristic: If it's a link and we haven't seen a header or long text yet
-            if re.match(r"^\[.*?\]\(.*?\)\s*$", line.strip()):
+            # Also handle list items that are just links
+            if re.match(r"^[\*\-]?\s*\[.*?\]\(.*?\)\s*$", line.strip()):
                 # It's a single link. Is it navigation?
                 # If it's followed by "Equipment ▼" or similar, it's nav.
                 if "▼" in line or "Equipment" in line or "Items" in line or "Locales" in line:
@@ -307,9 +329,7 @@ class MediaWikiProfile(BaseCleaningProfile):
                 if i < 50:
                     continue
 
-            # If we found real content, stop skipping
             cleaned_lines.append(line)
-            content_started = True
 
         return "\n".join(cleaned_lines)
 
@@ -624,6 +644,12 @@ class MediaWikiProfile(BaseCleaningProfile):
                     "type": "boolean",
                     "default": True,
                     "description": "Remove top-of-page navigation (Anonymous, Search, etc.)",
+                },
+                "custom_header_patterns": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "default": [],
+                    "description": "List of custom regex patterns to remove from header",
                 },
             },
         }

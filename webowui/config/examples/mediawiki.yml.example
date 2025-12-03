@@ -194,11 +194,15 @@ markdown_cleaning:
     remove_wiki_meta: true          # Remove "Work in progress" banners
     remove_navigation_boilerplate: true # Remove "Jump to navigation"
     remove_template_links: true     # Remove [v] [t] [e] links
-
-    # NEW: Additional Noise Removal
     remove_media: true              # Gallery/Images/Videos sections
     remove_references_section: true # References/Notes/Footnotes
     remove_header_navigation: true  # Top navigation (Search, etc.)
+
+    # Custom Header Patterns (Regex list)
+    # Add site-specific header patterns to remove here
+    # custom_header_patterns:
+    #   - "^#\\s+About\\s+MyWiki\\s*$"
+    #   - "^To\\s+learn\\s+how\\s+to\\s+contribute.*$"
 
     # Optional Filtering
     remove_citations: true          # Remove [1][2] markers
