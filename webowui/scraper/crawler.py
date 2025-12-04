@@ -51,8 +51,14 @@ class WikiCrawler:
         self.total_pages_crawled = 0
         self.total_pages_failed = 0
 
-    async def crawl(self, progress_callback=None) -> list[CrawlResult]:
-        """Main crawl method using crawl4ai deep crawling."""
+    async def crawl(self, progress_callback=None, result_callback=None) -> list[CrawlResult]:
+        """
+        Main crawl method using crawl4ai deep crawling.
+
+        Args:
+            progress_callback: Optional callback for progress updates (crawled, failed)
+            result_callback: Optional callback for processing each result immediately (streaming)
+        """
         logger.info(f"Starting crawl for {self.config.display_name}")
         logger.info(f"Strategy: {self.config.crawl_strategy}, Max depth: {self.config.max_depth}")
 
@@ -74,7 +80,11 @@ class WikiCrawler:
                 if use_streaming:
                     async for result in crawler.arun(url=self.config.start_urls[0], config=config):
                         crawl_result = self._convert_result(result)
-                        self.results.append(crawl_result)
+
+                        if result_callback:
+                            result_callback(crawl_result)
+                        else:
+                            self.results.append(crawl_result)
 
                         if crawl_result.success:
                             self.total_pages_crawled += 1
@@ -99,7 +109,11 @@ class WikiCrawler:
 
                     for result in raw_results:
                         crawl_result = self._convert_result(result)
-                        self.results.append(crawl_result)
+
+                        if result_callback:
+                            result_callback(crawl_result)
+                        else:
+                            self.results.append(crawl_result)
 
                         if crawl_result.success:
                             self.total_pages_crawled += 1

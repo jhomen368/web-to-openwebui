@@ -100,6 +100,7 @@ class TestOutputManagerSaving:
                 "url": "https://example.com/page1",
                 "filepath": "content/page1.md",
                 "checksum": "hash123",
+                "size": 1024,
             }
 
             # Mock _save_metadata and _save_report to avoid JSON serialization of MagicMock

@@ -35,24 +35,30 @@ class OutputManager:
         self.content_dir.mkdir(exist_ok=True)
 
         self.files_saved: list[dict] = []
+        self.failed_urls: list[dict] = []
+        self.total_content_size = 0
         self.timestamp = timestamp
 
-    def save_results(self, results: list[CrawlResult]) -> dict:
-        """Save all crawl results to files."""
-        logger.info(f"Saving {len(results)} pages to {self.output_dir}")
+    def save_page(self, result: CrawlResult) -> dict | None:
+        """Save a single page result (public method for streaming)."""
+        if result.success and result.markdown:
+            file_info = self._save_page(result)
+            if file_info:
+                self.files_saved.append(file_info)
+                self.total_content_size += file_info["size"]
+                return file_info
+        elif not result.success:
+            self.failed_urls.append({"url": result.url, "error": result.error})
+        return None
 
-        for result in results:
-            if result.success and result.markdown:
-                file_info = self._save_page(result)
-                if file_info:
-                    self.files_saved.append(file_info)
-
+    def finalize_save(self) -> dict:
+        """Finalize saving by generating metadata and reports."""
         # Save metadata
-        metadata = self._create_metadata(results)
+        metadata = self._create_metadata_from_state()
         self._save_metadata(metadata)
 
         # Save report
-        report = self._create_report(results)
+        report = self._create_report_from_state()
         self._save_report(report)
 
         logger.info(f"Saved {len(self.files_saved)} files to {self.content_dir}")
@@ -76,6 +82,15 @@ class OutputManager:
             save_info["current_updated"] = {"error": str(e)}
 
         return save_info
+
+    def save_results(self, results: list[CrawlResult]) -> dict:
+        """Save all crawl results to files (batch mode)."""
+        logger.info(f"Saving {len(results)} pages to {self.output_dir}")
+
+        for result in results:
+            self.save_page(result)
+
+        return self.finalize_save()
 
     def _save_page(self, result: CrawlResult) -> dict | None:
         """Save a single page as markdown file."""
@@ -179,11 +194,8 @@ cleaned: true
 """
         return frontmatter + markdown
 
-    def _create_metadata(self, results: list[CrawlResult]) -> dict:
-        """Create metadata for the scrape."""
-        successful = [r for r in results if r.success]
-        failed = [r for r in results if not r.success]
-
+    def _create_metadata_from_state(self) -> dict:
+        """Create metadata from internal state."""
         return {
             "site": {
                 "name": self.config.name,
@@ -192,20 +204,34 @@ cleaned: true
             },
             "scrape": {
                 "timestamp": self.timestamp,
-                "start_time": min(r.timestamp for r in results).isoformat() if results else None,
-                "end_time": max(r.timestamp for r in results).isoformat() if results else None,
+                "start_time": self.timestamp,  # Approximate
+                "end_time": datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
                 "strategy": self.config.crawl_strategy,
                 "max_depth": self.config.max_depth,
             },
             "statistics": {
-                "total_pages": len(results),
-                "successful": len(successful),
-                "failed": len(failed),
-                "total_content_size": sum(len(r.markdown) for r in successful),
+                "total_pages": len(self.files_saved) + len(self.failed_urls),
+                "successful": len(self.files_saved),
+                "failed": len(self.failed_urls),
+                "total_content_size": self.total_content_size,
             },
             "files": self.files_saved,
-            "failed_urls": [{"url": r.url, "error": r.error} for r in failed],
+            "failed_urls": self.failed_urls,
         }
+
+    def _create_metadata(self, results: list[CrawlResult]) -> dict:
+        """Create metadata for the scrape (deprecated, kept for compatibility)."""
+        # Populate state from results if empty
+        if not self.files_saved and not self.failed_urls:
+            for result in results:
+                if result.success:
+                    # We assume files are already saved if calling this, but if not...
+                    # This method is mainly for backward compat if someone calls it directly
+                    pass
+                else:
+                    self.failed_urls.append({"url": result.url, "error": result.error})
+
+        return self._create_metadata_from_state()
 
     def _save_metadata(self, metadata: dict):
         """Save metadata as JSON."""
@@ -214,25 +240,27 @@ cleaned: true
             json.dump(metadata, f, indent=2, ensure_ascii=False)
         logger.info(f"Saved metadata to {filepath}")
 
-    def _create_report(self, results: list[CrawlResult]) -> dict:
-        """Create human-readable report."""
-        successful = [r for r in results if r.success]
-        failed = [r for r in results if not r.success]
-
+    def _create_report_from_state(self) -> dict:
+        """Create human-readable report from internal state."""
+        total = len(self.files_saved) + len(self.failed_urls)
         return {
             "summary": {
                 "site": self.config.display_name,
                 "timestamp": self.timestamp,
-                "total_pages": len(results),
-                "successful": len(successful),
-                "failed": len(failed),
+                "total_pages": total,
+                "successful": len(self.files_saved),
+                "failed": len(self.failed_urls),
                 "success_rate": (
-                    f"{(len(successful) / len(results) * 100):.1f}%" if results else "0%"
+                    f"{(len(self.files_saved) / total * 100):.1f}%" if total else "0%"
                 ),
             },
-            "successful_urls": [r.url for r in successful],
-            "failed_urls": [{"url": r.url, "error": r.error} for r in failed],
+            "successful_urls": [f["url"] for f in self.files_saved],
+            "failed_urls": self.failed_urls,
         }
+
+    def _create_report(self, results: list[CrawlResult]) -> dict:
+        """Create human-readable report (deprecated)."""
+        return self._create_report_from_state()
 
     def _save_report(self, report: dict):
         """Save report as JSON."""

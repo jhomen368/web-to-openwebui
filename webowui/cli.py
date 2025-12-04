@@ -88,12 +88,19 @@ async def _scrape_site(site_config: SiteConfig, do_upload: bool = False):
     # Create crawler
     crawler = WikiCrawler(site_config)
 
-    # Perform crawl
-    results = await crawler.crawl()
-
-    # Save results
+    # Create output manager
     output_manager = OutputManager(site_config, app_config.outputs_dir)
-    save_info = output_manager.save_results(results)
+
+    # Define callback for streaming results
+    def result_callback(result):
+        output_manager.save_page(result)
+
+    # Perform crawl with streaming callback
+    # Note: results will be empty if callback is used, which is what we want for memory efficiency
+    await crawler.crawl(result_callback=result_callback)
+
+    # Finalize saving (metadata, reports)
+    save_info = output_manager.finalize_save()
 
     # Print stats
     stats = crawler.get_stats()
