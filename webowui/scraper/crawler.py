@@ -78,7 +78,9 @@ class WikiCrawler:
                 use_streaming = getattr(self.config, "use_streaming", False)
 
                 if use_streaming:
-                    async for result in crawler.arun(url=self.config.start_urls[0], config=config):
+                    async for result in await crawler.arun(
+                        url=self.config.start_urls[0], config=config
+                    ):
                         crawl_result = self._convert_result(result)
 
                         if result_callback:

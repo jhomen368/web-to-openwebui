@@ -322,7 +322,11 @@ async def test_crawler_crawl_streaming(mock_site_config_obj):
         async def async_gen(*args, **kwargs):
             yield mock_result
 
-        mock_crawler_instance.arun.side_effect = async_gen
+        # Wrapper to make it awaitable (since arun is async def)
+        async def awaitable_gen(*args, **kwargs):
+            return async_gen(*args, **kwargs)
+
+        mock_crawler_instance.arun.side_effect = awaitable_gen
 
         results = await crawler.crawl()
 
