@@ -51,6 +51,16 @@ crawling:
   # Optional: Stream results as they are crawled (vs batch at end)
   streaming: false
 
+  # Optional: Timeout for individual page loads (milliseconds)
+  # Default: 60000 (60 seconds)
+  # page_timeout: 60000
+
+  # OPTIONAL: Wait condition before extracting content
+  # CSS selector to wait for (ensures page is fully loaded)
+  # Useful for sites with heavy JS or dynamic content
+  # Default: null
+  wait_for: "css:#mw-content-text"
+
   # URL Filters
   filters:
     # URL patterns to follow (Python regex)

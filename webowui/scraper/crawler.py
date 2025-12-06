@@ -225,9 +225,9 @@ class WikiCrawler:
         remove_selectors = getattr(self.config, "remove_selectors", [])
         excluded_selector = ", ".join(remove_selectors) if remove_selectors else None
 
-        # Map timeout_minutes to page_timeout (ms)
-        timeout_minutes = getattr(self.config, "schedule_timeout_minutes", 60)
-        page_timeout = timeout_minutes * 60 * 1000
+        # Use the new page_timeout from config (in ms)
+        page_timeout = getattr(self.config, "page_timeout", 60000)  # Default 60s
+        wait_for = getattr(self.config, "wait_for", None)
 
         return CrawlerRunConfig(
             deep_crawl_strategy=deep_crawl_strategy,
@@ -243,6 +243,7 @@ class WikiCrawler:
             markdown_generator=self._create_markdown_generator(),
             cache_mode=CacheMode.BYPASS,
             page_timeout=page_timeout,
+            wait_for=wait_for,
         )
 
     def _create_markdown_generator(self):

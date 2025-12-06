@@ -70,6 +70,17 @@ crawling:
   # false: Collect all pages then process (simpler, default)
   streaming: false
 
+  # OPTIONAL: Timeout for individual page loads (milliseconds)
+  # Default: 60000 (60 seconds)
+  # Reduce this to fail fast on stuck pages, or increase for slow sites
+  # page_timeout: 60000
+
+  # OPTIONAL: Wait condition before extracting content
+  # CSS selector to wait for (ensures page is fully loaded)
+  # Useful for sites with heavy JS or dynamic content
+  # Default: null
+  # wait_for: null
+
   # OPTIONAL: Keywords for "best_first" strategy
   # Pages matching these keywords get priority
   # keywords:

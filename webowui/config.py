@@ -92,6 +92,10 @@ class SiteConfig:
         self.requests_per_second = rate_limit.get("requests_per_second", 2)
         self.delay_between_requests = rate_limit.get("delay_between_requests", 0.5)
 
+        # Page load settings
+        self.page_timeout = crawling.get("page_timeout", 60000)  # 60 seconds default
+        self.wait_for = crawling.get("wait_for", None)  # Optional wait condition
+
         # ---------------------------------------------------------------------
         # PIPELINE STAGE 1: HTML Filtering
         # ---------------------------------------------------------------------
