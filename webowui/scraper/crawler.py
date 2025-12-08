@@ -65,7 +65,11 @@ class WikiCrawler:
         strategy = self._create_deep_crawl_strategy()
         config = self._create_crawler_config(strategy)
 
-        async with AsyncWebCrawler(verbose=False, magic=True) as crawler:
+        async with AsyncWebCrawler(
+            verbose=False,
+            magic=True,
+            max_session_permit=self.config.max_concurrent_requests,
+        ) as crawler:
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),

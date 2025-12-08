@@ -91,6 +91,7 @@ class SiteConfig:
         rate_limit = crawling.get("rate_limit", {})
         self.requests_per_second = rate_limit.get("requests_per_second", 2)
         self.delay_between_requests = rate_limit.get("delay_between_requests", 0.5)
+        self.max_concurrent_requests = crawling.get("max_concurrent_requests", 10)
 
         # Page load settings
         self.page_timeout = crawling.get("page_timeout", 60000)  # 60 seconds default
@@ -257,7 +258,6 @@ class AppConfig:
         self.openwebui_base_url = os.getenv("OPENWEBUI_BASE_URL", "")
         self.openwebui_api_key = os.getenv("OPENWEBUI_API_KEY", "")
         self.log_level = os.getenv("LOG_LEVEL", "INFO")
-        self.max_concurrent_requests = int(os.getenv("MAX_CONCURRENT_REQUESTS", "5"))
         self.default_rate_limit = float(os.getenv("DEFAULT_RATE_LIMIT", "2"))
         self.default_delay = float(os.getenv("DEFAULT_DELAY", "0.5"))
 
