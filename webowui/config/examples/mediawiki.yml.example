@@ -213,6 +213,8 @@ markdown_cleaning:
     # custom_header_patterns:
     #   - "^#\\s+About\\s+MyWiki\\s*$"
     #   - "^To\\s+learn\\s+how\\s+to\\s+contribute.*$"
+    #   # Remove dynamic wiki statistics (articles, pages, edits, etc.)
+    #   - "^\\*\\s*\\*\\*\\d+(,\\d+)*\\*\\*\\s*(articles|pages|edits|files|users|active users)"
 
     # Optional Filtering
     remove_citations: true          # Remove [1][2] markers
