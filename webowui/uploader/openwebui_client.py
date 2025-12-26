@@ -315,7 +315,7 @@ class OpenWebUIClient:
     async def _get_knowledge_by_name(self, name: str) -> dict | None:
         """Try to find existing knowledge by name."""
         try:
-            url = f"{self.base_url}/api/v1/knowledge/list"
+            url = f"{self.base_url}/api/v1/knowledge/"
 
             async with (
                 aiohttp.ClientSession() as session,
@@ -324,7 +324,10 @@ class OpenWebUIClient:
                 if response.status == 200:
                     result = await response.json()
                     # Response is a list of knowledge items
-                    knowledge_list = result if isinstance(result, list) else result.get("data", [])
+                    if isinstance(result, list):
+                        knowledge_list = result
+                    else:
+                        knowledge_list = result.get("data") or result.get("items", [])
 
                     for item in knowledge_list:
                         if item.get("name") == name:
@@ -354,7 +357,7 @@ class OpenWebUIClient:
         """
         try:
             # Get all knowledge bases
-            url = f"{self.base_url}/api/v1/knowledge/list"
+            url = f"{self.base_url}/api/v1/knowledge/"
 
             async with (
                 aiohttp.ClientSession() as session,
@@ -364,7 +367,10 @@ class OpenWebUIClient:
                     return None
 
                 result = await response.json()
-                knowledge_list = result if isinstance(result, list) else result.get("data", [])
+                if isinstance(result, list):
+                    knowledge_list = result
+                else:
+                    knowledge_list = result.get("data") or result.get("items", [])
 
                 # Find all KBs with matching name
                 matching_kbs = [kb for kb in knowledge_list if kb.get("name") == knowledge_name]
@@ -567,7 +573,8 @@ class OpenWebUIClient:
             List of file dicts with id, filename, hash (if requested), etc., or None on error
         """
         try:
-            url = f"{self.base_url}/api/v1/knowledge/{knowledge_id}"
+            # Updated endpoint for retrieving files
+            url = f"{self.base_url}/api/v1/knowledge/{knowledge_id}/files"
 
             async with (
                 aiohttp.ClientSession() as session,
@@ -575,8 +582,10 @@ class OpenWebUIClient:
             ):
                 if response.status == 200:
                     result = await response.json()
-                    # Extract file list from response
-                    files = result.get("files")
+                    # Extract file list from response (new format: {"items": [...]})
+                    # Fallback to "files" for backward compatibility if needed
+                    files = result.get("items") or result.get("files")
+
                     if isinstance(files, dict):
                         files = files.get("data", []) if files else []
                     elif not isinstance(files, list):
@@ -1372,7 +1381,7 @@ class OpenWebUIClient:
             True if connection successful, False otherwise
         """
         try:
-            url = f"{self.base_url}/api/v1/knowledge/list"
+            url = f"{self.base_url}/api/v1/knowledge/"
 
             async with (
                 aiohttp.ClientSession() as session,

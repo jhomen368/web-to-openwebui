@@ -66,7 +66,7 @@ spec:
 
 ### 4. ConfigMap (Site Configurations)
 
-Defines the sites to scrape. These files will be mounted into the configuration directory. Update this section to match your desired configuration the below configuration is shown to show an example of tested configuration
+Defines the sites to scrape. These files will be mounted into the configuration directory.
 
 ```yaml
 apiVersion: v1
@@ -75,13 +75,13 @@ metadata:
   name: webowui-sites
   namespace: web-to-openwebui
 data:
-  monsterhunter.yaml: |
+  example_wiki.yaml: |
     site:
-      name: "monsterhunter"
-      display_name: "Monster Hunter Wiki"
-      base_url: "https://monsterhunterwiki.org"
+      name: "example_wiki"
+      display_name: "Example Wiki"
+      base_url: "https://wiki.example.com"
       start_urls:
-        - "https://monsterhunterwiki.org/wiki/Main_Page"
+        - "https://wiki.example.com/wiki/Main_Page"
 
     crawling:
       strategy: "bfs"
@@ -90,41 +90,17 @@ data:
       streaming: false
       filters:
         follow_patterns:
-          - "^https://monsterhunterwiki\\.org/wiki/.*"
+          - "^https://wiki\\.example\\.com/wiki/.*"
         exclude_patterns:
           - ".*Special:.*"
           - ".*User:.*"
           - ".*Talk:.*"
           - ".*File:.*"
-          - ".*Template:.*"
-          - ".*Category:.*"
-          - ".*Help:.*"
           - ".*action=edit.*"
           - ".*action=history.*"
-
-          # Wiki administrative/meta pages
-          - ".*[Ww]iki:[Aa]bout"
-          - ".*[Ww]iki:.*[Dd]isclaimer"
-          - ".*[Ww]iki:[Cc]opyrights?"
-          - ".*[Ww]iki:[Pp]rivacy"
-          - ".*[Ww]iki:[Cc]ommunity"
-
-          # Edit/action pages and redirects
-          - ".*/edit(\\?.*)?$"
-          - ".*&action=(edit|history|delete|protect)"
-          - ".*\\?redlink="
-
-          # Version history and changelog pages
-          - ".*[Vv]ersion.*[Hh]istory"
-          - ".*[Cc]hangelog"
-          - ".*[Pp]atch.*[Nn]otes"
-
-          # Image and file description pages
-          - ".*Image:.*"
       rate_limit:
         requests_per_second: 1
         delay_between_requests: 1.0
-        max_retries: 3
 
     html_filtering:
       excluded_tags:
@@ -133,166 +109,26 @@ data:
         - aside
         - header
       exclude_external_links: true
-      exclude_social_media_links: true
       min_block_words: 10
-
-      pruning:
-        enabled: false
-        threshold: 0.55
-        min_words: 50
 
     markdown_conversion:
       content_selector: "body"
       remove_selectors:
         - "script"
         - "style"
-        - "nav"
-        - "footer"
         - ".mw-navigation"
         - ".mw-footer"
-        - ".toc"
-      markdown_options:
-        include_images: true
-        include_links: true
-        preserve_structure: true
-        heading_style: "atx"
-
-    result_filtering:
-      min_page_length: 50
-      max_page_length: 500000
-      allowed_content_types:
-        - "text/html"
-      filter_dead_links: true
-
-    markdown_cleaning:
-      profile: "mediawiki"
-
-    openwebui:
-      knowledge_name: "Monster Hunter"
-      description: "Comprehensive Monster Hunter game mechanics, monsters, weapons, armor, and equipment database"
-      auto_upload: true
-      batch_size: 10
-      preserve_deleted_files: false
-      auto_rebuild_state: true
-      rebuild_confidence_threshold: "medium"
-
-    retention:
-      enabled: true
-      keep_backups: 2
-      auto_cleanup: true
-
-    schedule:
-      enabled: true
-      type: "cron"
-      cron: "0 3 * * *"
-      timezone: "America/Los_Angeles"
-      timeout_minutes: 60
-      retry:
-        enabled: true
-        max_attempts: 3
-        delay_minutes: 15
-
-  poe2wiki.yaml: |
-    site:
-      name: "poe2wiki"
-      display_name: "Path of Exile 2 Wiki"
-      base_url: "https://www.poe2wiki.net"
-      start_urls:
-        - "https://www.poe2wiki.net/wiki/Path_of_Exile_2_Wiki"
-
-    crawling:
-      strategy: "bfs"
-      max_depth: 1
-      max_pages: null
-      streaming: false
-      filters:
-        follow_patterns:
-          - "^https://www\\.poe2wiki\\.net/wiki/.*"
-        exclude_patterns:
-          - ".*Special:.*"
-          - ".*User:.*"
-          - ".*Talk:.*"
-          - ".*File:.*"
-          - ".*Template:.*"
-          - ".*Category:.*"
-          - ".*Help:.*"
-          - ".*action=edit.*"
-          - ".*action=history.*"
-
-          # Wiki administrative/meta pages
-          - ".*[Ww]iki:[Aa]bout"
-          - ".*[Ww]iki:.*[Dd]isclaimer"
-          - ".*[Ww]iki:[Cc]opyrights?"
-          - ".*[Ww]iki:[Pp]rivacy"
-          - ".*[Ww]iki:[Cc]ommunity"
-
-          # Edit/action pages and redirects
-          - ".*/edit(\\?.*)?$"
-          - ".*&action=(edit|history|delete|protect)"
-          - ".*\\?redlink="
-
-          # Version history and changelog pages
-          - ".*[Vv]ersion.*[Hh]istory"
-          - ".*[Cc]hangelog"
-          - ".*[Pp]atch.*[Nn]otes"
-
-          # Image and file description pages
-          - ".*Image:.*"
-      rate_limit:
-        requests_per_second: 1
-        delay_between_requests: 1.0
-        max_retries: 3
-
-    html_filtering:
-      excluded_tags:
-        - nav
-        - footer
-        - aside
-        - header
-      exclude_external_links: true
-      exclude_social_media_links: true
-      min_block_words: 10
-
-      pruning:
-        enabled: false
-        threshold: 0.55
-        min_words: 50
-
-    markdown_conversion:
-      content_selector: "body"
-      remove_selectors:
-        - "script"
-        - "style"
-        - "nav"
-        - "footer"
-        - ".mw-navigation"
-        - ".mw-footer"
-        - ".toc"
       options:
         include_images: true
         include_links: true
-        preserve_structure: true
         heading_style: "atx"
-
-    result_filtering:
-      min_page_length: 50
-      max_page_length: 500000
-      allowed_content_types:
-        - "text/html"
 
     markdown_cleaning:
       profile: "mediawiki"
-      # config:
-      #   filter_dead_links: true
-      #   remove_citations: true
-      #   remove_categories: true
-      #   remove_media: true
-      #   remove_references_section: true
-      #   remove_header_navigation: true
 
     openwebui:
-      knowledge_name: "Path of Exile 2"
-      description: "Path of Exile 2 game mechanics, character classes, skills, items, and endgame content"
+      knowledge_name: "Example Wiki"
+      description: "Knowledge base for Example Wiki"
       auto_upload: true
       batch_size: 10
       preserve_deleted_files: false
@@ -307,13 +143,9 @@ data:
     schedule:
       enabled: true
       type: "cron"
-      cron: "0 2 * * *"
+      cron: "0 3 * * *"  # 3 AM daily
       timezone: "America/Los_Angeles"
       timeout_minutes: 60
-      retry:
-        enabled: true
-        max_attempts: 3
-        delay_minutes: 15
 ```
 
 👉 **For full configuration options, see:** [`webowui/config/examples/README.md`](../webowui/config/examples/README.md)
@@ -332,6 +164,8 @@ metadata:
     app: web-to-openwebui
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: web-to-openwebui
@@ -342,7 +176,7 @@ spec:
     spec:
       containers:
         - name: web-to-openwebui
-          image: ghcr.io/jhomen368/web-to-openwebui:latest
+          image: ghcr.io/jhomen368/web-to-openwebui:v1.0.0
           imagePullPolicy: Always
           env:
             - name: OPENWEBUI_BASE_URL
@@ -357,12 +191,10 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /app/data
+            # Mount each config file individually using subPath
             - name: config
-              mountPath: /app/data/config/sites/monsterhunter.yaml
-              subPath: monsterhunter.yaml
-            - name: config
-              mountPath: /app/data/config/sites/poe2wiki.yaml
-              subPath: poe2wiki.yaml
+              mountPath: /app/data/config/sites/example_wiki.yaml
+              subPath: example_wiki.yaml
           resources:
             requests:
               memory: "512Mi"
@@ -441,3 +273,4 @@ Check your volumeMounts - if you mounted the ConfigMap directly to `/app/data/co
 ConfigMaps are read when the pod starts, not dynamically. After updating your ConfigMap, restart the deployment:
 ```bash
 kubectl rollout restart deployment/web-to-openwebui -n web-to-openwebui
+```

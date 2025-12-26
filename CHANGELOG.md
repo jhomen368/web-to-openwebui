@@ -5,13 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2025-11-22
+## [1.0.0] - 2025-12-26
 
 ### 🎉 First Stable Release
 
 web-to-openwebui is now production-ready! This release represents a complete, tested system for scraping web content and uploading it to OpenWebUI knowledge bases with intelligent content filtering and incremental updates.
 
 ### ⚠️ Breaking Changes
+
+- **OpenWebUI API Update**: Fixed compatibility with latest OpenWebUI API changes (Knowledge Files endpoint changed from `/knowledge/{id}` to `/knowledge/{id}/files` and response format changed to `{"items": [...]}`).
 
 If upgrading from pre-release versions, note these configuration changes:
 

@@ -80,7 +80,7 @@ async def test_test_connection_success(client, mock_session):
     assert result is True
     mock_session.get.assert_called_once()
     args, kwargs = mock_session.get.call_args
-    assert args[0] == "http://localhost:8000/api/v1/knowledge/list"
+    assert args[0] == "http://localhost:8000/api/v1/knowledge/"
     assert kwargs["headers"] == client.headers
 
 
@@ -237,7 +237,7 @@ async def test_find_knowledge_by_content_multiple_matches(client, mock_session):
     mock_kb2_response = AsyncMock()
     mock_kb2_response.status = 200
     mock_kb2_response.json.return_value = {
-        "files": [{"id": "file-1", "meta": {"name": "site/test.md"}}]
+        "items": [{"id": "file-1", "meta": {"name": "site/test.md"}}]
     }
 
     mock_session.get.return_value.__aenter__.side_effect = [
@@ -479,7 +479,7 @@ async def test_get_knowledge_files(client, mock_session):
     mock_response = AsyncMock()
     mock_response.status = 200
     mock_response.json.return_value = {
-        "files": [
+        "items": [
             {"id": "file-1", "filename": "test1.md"},
             {"id": "file-2", "filename": "test2.md"},
         ]
@@ -493,7 +493,7 @@ async def test_get_knowledge_files(client, mock_session):
 
     mock_session.get.assert_called_once()
     args, _ = mock_session.get.call_args
-    assert args[0] == "http://localhost:8000/api/v1/knowledge/kb-123"
+    assert args[0] == "http://localhost:8000/api/v1/knowledge/kb-123/files"
 
 
 @pytest.mark.unit
@@ -823,7 +823,7 @@ async def test_upload_scrape_incrementally_cleanup_untracked(client, mock_sessio
     # 2. Get knowledge files (find untracked)
     mock_files = AsyncMock(status=200)
     mock_files.json.return_value = {
-        "files": [{"id": "file-1", "meta": {"name": "test-site/untracked.md"}}]
+        "items": [{"id": "file-1", "meta": {"name": "test-site/untracked.md"}}]
     }
 
     # 3. Remove from KB
@@ -989,7 +989,7 @@ async def test_match_and_reconcile_hash_match(client, mock_session):
     # Mock remote files
     mock_response = AsyncMock(status=200)
     mock_response.json.return_value = {
-        "files": [
+        "items": [
             {"id": "file-1", "filename": "test1.md", "meta": {"name": "site/test1.md"}},
             {"id": "file-2", "filename": "test2.md", "meta": {"name": "site/test2.md"}},
         ]
@@ -1035,7 +1035,7 @@ async def test_match_and_reconcile_filename_match(client, mock_session):
     # Mock remote files
     mock_response = AsyncMock(status=200)
     mock_response.json.return_value = {
-        "files": [{"id": "file-1", "filename": "test1.md", "meta": {"name": "site/test1.md"}}]
+        "items": [{"id": "file-1", "filename": "test1.md", "meta": {"name": "site/test1.md"}}]
     }
 
     # Mock file details (old hash)
@@ -1067,7 +1067,7 @@ async def test_match_and_reconcile_no_match(client, mock_session):
 
     # Mock remote files (empty or different)
     mock_response = AsyncMock(status=200)
-    mock_response.json.return_value = {"files": []}
+    mock_response.json.return_value = {"items": []}
 
     mock_session.get.return_value.__aenter__.return_value = mock_response
 
@@ -1169,7 +1169,7 @@ async def test_check_state_health_healthy(client, mock_session):
     # Mock remote files
     mock_response = AsyncMock(status=200)
     mock_response.json.return_value = {
-        "files": [
+        "items": [
             {"id": "file-1", "filename": "test1.md", "meta": {"name": "site/test1.md"}},
             {"id": "file-2", "filename": "test2.md", "meta": {"name": "site/test2.md"}},
         ]
@@ -1200,7 +1200,7 @@ async def test_check_state_health_missing_local(client, mock_session):
     """Test missing local state."""
     # Mock remote files
     mock_response = AsyncMock(status=200)
-    mock_response.json.return_value = {"files": [{"id": "file-1"}]}
+    mock_response.json.return_value = {"items": [{"id": "file-1"}]}
     mock_details = AsyncMock(status=200)
     mock_details.json.return_value = {"id": "file-1"}
 
@@ -1221,7 +1221,7 @@ async def test_check_state_health_corrupted(client, mock_session):
 
     # Mock remote files (empty)
     mock_response = AsyncMock(status=200)
-    mock_response.json.return_value = {"files": []}
+    mock_response.json.return_value = {"items": []}
 
     mock_session.get.return_value.__aenter__.return_value = mock_response
 
@@ -1246,7 +1246,7 @@ async def test_check_state_health_degraded(client, mock_session):
     # Mock remote files (file-1 missing, file-3 extra)
     mock_response = AsyncMock(status=200)
     mock_response.json.return_value = {
-        "files": [
+        "items": [
             {"id": "file-2", "filename": "test2.md", "meta": {"name": "site/test2.md"}},
             {"id": "file-3", "filename": "test3.md", "meta": {"name": "site/test3.md"}},
         ]
