@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-01-04
+
+### 🐛 Bug Fixes
+
+- **Scheduler**: Fixed a critical issue where the scheduler would crash with `FileNotFoundError` if a site configuration file was removed but its job remained in the persistent database.
+  - Implemented automatic pruning of stale jobs on startup.
+  - The scheduler now synchronizes its job database with the currently available configuration files every time it starts.
+
 ## [1.0.0] - 2025-12-26
 
 ### 🎉 First Stable Release

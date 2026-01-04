@@ -75,17 +75,39 @@ class ScraperScheduler:
         site_names = app_config.list_sites()
         logger.info(f"Loading schedules for {len(site_names)} sites")
 
+        active_job_ids = set()
+
         for site_name in site_names:
             try:
                 site_config = app_config.load_site_config(site_name)
                 if site_config.schedule_enabled:
-                    self.register_job(site_config)
+                    job_id = self.register_job(site_config)
+                    active_job_ids.add(job_id)
                 else:
                     logger.debug(f"Skipping {site_name} (scheduling disabled)")
             except Exception as e:
                 logger.error(f"Failed to load config for {site_name}: {e}")
 
-    def register_job(self, site_config: SiteConfig):
+        # Prune stale jobs (jobs in DB but not in current config)
+        self._prune_stale_jobs(active_job_ids)
+
+    def _prune_stale_jobs(self, active_job_ids: set[str]):
+        """Remove jobs that are no longer in the active configuration."""
+        # Get all jobs from the scheduler
+        # Note: We need to be careful only to touch 'scrape-' jobs managed by us
+        all_jobs = self.scheduler.get_jobs()
+
+        for job in all_jobs:
+            if job.id.startswith("scrape-") and job.id not in active_job_ids:
+                logger.info(f"Removing stale job: {job.id} (config removed or disabled)")
+                try:
+                    self.scheduler.remove_job(job.id)
+                    if job.id in self.jobs:
+                        del self.jobs[job.id]
+                except Exception as e:
+                    logger.error(f"Failed to remove stale job {job.id}: {e}")
+
+    def register_job(self, site_config: SiteConfig) -> str:
         """Register a scheduled scrape job."""
         job_id = f"scrape-{site_config.name}"
 
@@ -111,6 +133,7 @@ class ScraperScheduler:
 
         self.jobs[job_id] = site_config
         logger.info(f"Registered job: {job_id} ({site_config.schedule_type})")
+        return job_id
 
     def start(self):
         """Start the scheduler daemon."""
