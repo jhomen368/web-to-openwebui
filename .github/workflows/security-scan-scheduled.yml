@@ -19,7 +19,7 @@ jobs:
 
     strategy:
       matrix:
-        tag: ['latest', 'main']
+        tag: ['latest']
 
     steps:
       - name: Log in to GHCR
