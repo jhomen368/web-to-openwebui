@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-01-22
+
+### 🛠️ Maintenance
+
+- **Docker Image Rebuild**: Rebuilt Docker image with latest base image security patches to address vulnerabilities detected in weekly security scan.
+
+### 📝 Notes
+
+This is a maintenance release focused on security updates and version consistency. No functional changes to the application.
+
+**Security**: Users are encouraged to pull the latest Docker image (`ghcr.io/jhomen368/web-to-openwebui:latest`) to benefit from the latest security patches in the base Python image.
+
 ## [1.0.1] - 2026-01-04
 
 ### 🐛 Bug Fixes

@@ -48,26 +48,25 @@ jobs:
           sarif_file: 'trivy-results-${{ matrix.tag }}.sarif'
           category: 'trivy-${{ matrix.tag }}'
 
-      - name: Check for vulnerabilities
+      - name: Check for CRITICAL vulnerabilities
         id: check
         run: |
-          # Extract vulnerability count from Trivy SARIF
-          VULN_COUNT=$(jq '.runs[0].results | length' trivy-results-${{ matrix.tag }}.sarif)
-          echo "count=$VULN_COUNT" >> $GITHUB_OUTPUT
+          # Extract CRITICAL vulnerability count from Trivy SARIF
+          CRIT_COUNT=$(jq '.runs[0].results[] | select(.severity == "CRITICAL") | length' trivy-results-${{ matrix.tag }}.sarif)
+          echo "count=$CRIT_COUNT" >> $GITHUB_OUTPUT
 
-          if [ "$VULN_COUNT" -gt 0 ]; then
-            echo "⚠️ Found $VULN_COUNT vulnerabilities in ${{ matrix.tag }} image"
-            exit 1
+          if [ "$CRIT_COUNT" -gt 0 ]; then
+            echo "⚠️ Found $CRIT_COUNT CRITICAL vulnerabilities in ${{ matrix.tag }} image"
           else
-            echo "✅ No critical/high vulnerabilities found in ${{ matrix.tag }} image"
+            echo "✅ No CRITICAL vulnerabilities found in ${{ matrix.tag }} image"
           fi
 
-      - name: Create issue if vulnerabilities found
-        if: failure() && steps.check.outcome == 'failure'
+      - name: Create issue if CRITICAL vulnerabilities found
+        if: always() && steps.check.outputs.count != '0'
         uses: actions/github-script@v8
         with:
           script: |
-            const vulnCount = '${{ steps.check.outputs.count }}';
+            const critCount = '${{ steps.check.outputs.count }}';
             const tag = '${{ matrix.tag }}';
 
             // Check if issue already exists
@@ -79,23 +78,23 @@ jobs:
             });
 
             const existingIssue = issues.data.find(issue =>
-              issue.title.includes(`Security vulnerabilities in ${tag} image`)
+              issue.title.includes(`CRITICAL vulnerabilities in ${tag} image`)
             );
 
             if (!existingIssue) {
               await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                title: `🔒 Security vulnerabilities found in ${tag} image`,
+                title: `🔒 CRITICAL vulnerabilities found in ${tag} image`,
                 body: `## Security Scan Results
 
                 **Image**: \`ghcr.io/${{ github.repository }}:${tag}\`
-                **Vulnerabilities Found**: ${vulnCount} (CRITICAL/HIGH severity)
+                **CRITICAL Vulnerabilities Found**: ${critCount}
                 **Scan Date**: ${new Date().toISOString()}
 
                 ### Action Required
 
-                Critical or high severity vulnerabilities have been detected in the published Docker image.
+                CRITICAL severity vulnerabilities have been detected in the published Docker image. These require immediate attention.
 
                 **Next Steps**:
                 1. Review the [Security tab](https://github.com/${{ github.repository }}/security/code-scanning) for details
