@@ -237,7 +237,7 @@ async def test_find_knowledge_by_content_multiple_matches(client, mock_session):
     mock_kb2_response = AsyncMock()
     mock_kb2_response.status = 200
     mock_kb2_response.json.return_value = {
-        "items": [{"id": "file-1", "meta": {"name": "site/test.md"}}]
+        "items": [{"id": "file-1", "meta": {"name": "site_test.md"}}]
     }
 
     mock_session.get.return_value.__aenter__.side_effect = [
@@ -823,7 +823,7 @@ async def test_upload_scrape_incrementally_cleanup_untracked(client, mock_sessio
     # 2. Get knowledge files (find untracked)
     mock_files = AsyncMock(status=200)
     mock_files.json.return_value = {
-        "items": [{"id": "file-1", "meta": {"name": "test-site/untracked.md"}}]
+        "items": [{"id": "file-1", "meta": {"name": "test-site_untracked.md"}}]
     }
 
     # 3. Remove from KB
@@ -990,8 +990,8 @@ async def test_match_and_reconcile_hash_match(client, mock_session):
     mock_response = AsyncMock(status=200)
     mock_response.json.return_value = {
         "items": [
-            {"id": "file-1", "filename": "test1.md", "meta": {"name": "site/test1.md"}},
-            {"id": "file-2", "filename": "test2.md", "meta": {"name": "site/test2.md"}},
+            {"id": "file-1", "filename": "test1.md", "meta": {"name": "site_test1.md"}},
+            {"id": "file-2", "filename": "test2.md", "meta": {"name": "site_test2.md"}},
         ]
     }
 
@@ -1000,13 +1000,13 @@ async def test_match_and_reconcile_hash_match(client, mock_session):
     mock_details_1.json.return_value = {
         "id": "file-1",
         "hash": "hash1",
-        "meta": {"name": "site/test1.md"},
+        "meta": {"name": "site_test1.md"},
     }
     mock_details_2 = AsyncMock(status=200)
     mock_details_2.json.return_value = {
         "id": "file-2",
         "hash": "hash2",
-        "meta": {"name": "site/test2.md"},
+        "meta": {"name": "site_test2.md"},
     }
 
     mock_session.get.return_value.__aenter__.side_effect = [
@@ -1035,7 +1035,7 @@ async def test_match_and_reconcile_filename_match(client, mock_session):
     # Mock remote files
     mock_response = AsyncMock(status=200)
     mock_response.json.return_value = {
-        "items": [{"id": "file-1", "filename": "test1.md", "meta": {"name": "site/test1.md"}}]
+        "items": [{"id": "file-1", "filename": "test1.md", "meta": {"name": "site_test1.md"}}]
     }
 
     # Mock file details (old hash)
@@ -1043,7 +1043,7 @@ async def test_match_and_reconcile_filename_match(client, mock_session):
     mock_details.json.return_value = {
         "id": "file-1",
         "hash": "old_hash",
-        "meta": {"name": "site/test1.md"},
+        "meta": {"name": "site_test1.md"},
     }
 
     mock_session.get.return_value.__aenter__.side_effect = [mock_response, mock_details]
@@ -1170,16 +1170,16 @@ async def test_check_state_health_healthy(client, mock_session):
     mock_response = AsyncMock(status=200)
     mock_response.json.return_value = {
         "items": [
-            {"id": "file-1", "filename": "test1.md", "meta": {"name": "site/test1.md"}},
-            {"id": "file-2", "filename": "test2.md", "meta": {"name": "site/test2.md"}},
+            {"id": "file-1", "filename": "test1.md", "meta": {"name": "site_test1.md"}},
+            {"id": "file-2", "filename": "test2.md", "meta": {"name": "site_test2.md"}},
         ]
     }
 
     # Mock file details
     mock_details_1 = AsyncMock(status=200)
-    mock_details_1.json.return_value = {"id": "file-1", "meta": {"name": "site/test1.md"}}
+    mock_details_1.json.return_value = {"id": "file-1", "meta": {"name": "site_test1.md"}}
     mock_details_2 = AsyncMock(status=200)
-    mock_details_2.json.return_value = {"id": "file-2", "meta": {"name": "site/test2.md"}}
+    mock_details_2.json.return_value = {"id": "file-2", "meta": {"name": "site_test2.md"}}
 
     mock_session.get.return_value.__aenter__.side_effect = [
         mock_response,
@@ -1247,15 +1247,15 @@ async def test_check_state_health_degraded(client, mock_session):
     mock_response = AsyncMock(status=200)
     mock_response.json.return_value = {
         "items": [
-            {"id": "file-2", "filename": "test2.md", "meta": {"name": "site/test2.md"}},
-            {"id": "file-3", "filename": "test3.md", "meta": {"name": "site/test3.md"}},
+            {"id": "file-2", "filename": "test2.md", "meta": {"name": "site_test2.md"}},
+            {"id": "file-3", "filename": "test3.md", "meta": {"name": "site_test3.md"}},
         ]
     }
 
     mock_details_2 = AsyncMock(status=200)
-    mock_details_2.json.return_value = {"id": "file-2", "meta": {"name": "site/test2.md"}}
+    mock_details_2.json.return_value = {"id": "file-2", "meta": {"name": "site_test2.md"}}
     mock_details_3 = AsyncMock(status=200)
-    mock_details_3.json.return_value = {"id": "file-3", "meta": {"name": "site/test3.md"}}
+    mock_details_3.json.return_value = {"id": "file-3", "meta": {"name": "site_test3.md"}}
 
     mock_session.get.return_value.__aenter__.side_effect = [
         mock_response,

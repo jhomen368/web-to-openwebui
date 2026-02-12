@@ -830,8 +830,8 @@ class OpenWebUIClient:
             file_id = f.get("id")
             filename_decoded = f.get("decoded_filename", "")
             if filename_decoded and file_id:
-                # Strip site folder prefix to get relative path
-                relative_filename = filename_decoded.removeprefix(f"{site_name}/")
+                # Strip site folder prefix to get relative path (using underscores in new format)
+                relative_filename = filename_decoded.removeprefix(f"{site_name}_")
                 remote_filename_map[relative_filename] = {
                     "file_id": file_id,
                     "hash": f.get("hash"),
@@ -1035,7 +1035,7 @@ class OpenWebUIClient:
         if remote_files_list:
             for rf in remote_files_list:
                 decoded_filename = rf.get("decoded_filename", "")
-                relative_filename = decoded_filename.removeprefix(f"{site_name}/")
+                relative_filename = decoded_filename.removeprefix(f"{site_name}_")
                 if relative_filename and rf.get("hash"):
                     remote_hash_by_filename[relative_filename] = rf["hash"]
 
@@ -1281,7 +1281,7 @@ class OpenWebUIClient:
                 # Filter to only files in this site's folder
                 import urllib.parse
 
-                site_folder = f"{site_name}/"
+                site_folder = f"{site_name}_"
                 untracked_file_ids = []
 
                 for f in remote_files:
