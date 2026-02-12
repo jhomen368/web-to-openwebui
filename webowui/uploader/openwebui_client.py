@@ -76,13 +76,15 @@ class OpenWebUIClient:
                             logger.error(f"Upload error for {fp.name}: {result}")
                         elif result:
                             # Calculate upload filename for tracking
+                            # Use underscores instead of forward slashes to match upload behavior
                             if site_name and base_content_dir:
                                 try:
                                     relative_path = fp.relative_to(base_content_dir)
-                                    upload_filename = f"{site_name}/{relative_path}"
-                                    upload_filename = upload_filename.replace("\\", "/")
+                                    upload_filename = f"{site_name}_{relative_path}".replace(
+                                        "\\", "_"
+                                    ).replace("/", "_")
                                 except ValueError:
-                                    upload_filename = f"{site_name}/{fp.name}"
+                                    upload_filename = f"{site_name}_{fp.name}"
                             else:
                                 upload_filename = fp.name
 
@@ -126,16 +128,19 @@ class OpenWebUIClient:
             url = f"{self.base_url}/api/v1/files/"
 
             # Construct filename with site folder if provided
+            # Note: OpenWebUI URL-encodes forward slashes, so use underscores for folder structure
             if site_name and base_content_dir:
                 # Get relative path from content directory for nested structure
                 try:
                     relative_path = file_path.relative_to(base_content_dir)
-                    upload_filename = f"{site_name}/{relative_path}"
-                    # Normalize path separators to forward slashes
-                    upload_filename = upload_filename.replace("\\", "/")
+                    # Replace path separators with underscores to preserve folder hierarchy
+                    # This prevents OpenWebUI from URL-encoding forward slashes as %2F
+                    upload_filename = f"{site_name}_{relative_path}".replace("\\", "_").replace(
+                        "/", "_"
+                    )
                 except ValueError:
                     # Not relative to base_content_dir, use plain filename with site prefix
-                    upload_filename = f"{site_name}/{file_path.name}"
+                    upload_filename = f"{site_name}_{file_path.name}"
             else:
                 upload_filename = file_path.name
 
@@ -607,9 +612,9 @@ class OpenWebUIClient:
 
                     # Filter by site folder if specified
                     if site_folder:
-                        # Normalize folder format (ensure trailing slash)
-                        if not site_folder.endswith("/"):
-                            site_folder = f"{site_folder}/"
+                        # Normalize folder format (ensure trailing underscore for new format)
+                        if not site_folder.endswith("_"):
+                            site_folder = f"{site_folder}_"
 
                         filtered_files = []
                         # Add None check before iteration
@@ -625,7 +630,7 @@ class OpenWebUIClient:
                                     else ""
                                 )
 
-                                # Check if file is in the specified folder
+                                # Check if file is in the specified folder (underscore-based naming)
                                 if filename.startswith(site_folder):
                                     # Store decoded filename for easier comparison
                                     f["decoded_filename"] = filename
