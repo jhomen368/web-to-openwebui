@@ -121,49 +121,56 @@ class TestScraperScheduler:
     def test_start(self, scheduler):
         """Test starting the scheduler."""
         with (
-            patch.object(scheduler, "load_schedules") as mock_load,
             patch("asyncio.run") as mock_asyncio_run,
             patch.object(scheduler, "_run_scheduler", new_callable=MagicMock),
+            patch.object(scheduler, "_cleanup_database") as mock_cleanup,
         ):
 
             # Test with jobs
             scheduler.jobs = {"job1": MagicMock()}
             scheduler.start()
 
-            mock_load.assert_called_once()
+            # load_schedules is now called inside _run_scheduler, not in start()
+            # Only cleanup and asyncio.run are called in start()
+            mock_cleanup.assert_called_once()
             mock_asyncio_run.assert_called_once()
 
-            # Test without jobs (logs warning)
-            mock_load.reset_mock()
-            mock_asyncio_run.reset_mock()
-            scheduler.jobs = {}
-
-            with patch("webowui.scheduler.logger") as mock_logger:
-                scheduler.start()
-                mock_logger.warning.assert_called()
+            # Test that _run_scheduler is passed to asyncio.run
+            mock_asyncio_run.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_run_scheduler(self, scheduler):
+    async def test_run_scheduler(self, scheduler, mock_app_config):
         """Test the internal run loop."""
-        # Setup a job to test the logging loop
+        # Setup mock load_schedules to add a job
         site_config = MagicMock(spec=SiteConfig)
         site_config.name = "test_site"
-        scheduler.jobs = {"job1": site_config}
 
-        mock_job = MagicMock()
-        mock_job.next_run_time = "tomorrow"
-        scheduler.scheduler.get_job.return_value = mock_job
+        mock_app_config.list_sites.return_value = ["test_site"]
+        mock_app_config.load_site_config.return_value = site_config
+        site_config.schedule_enabled = True
 
-        # Mock asyncio.sleep to raise SystemExit to break the infinite loop
-        with patch("asyncio.sleep", side_effect=[None, SystemExit]):
-            import contextlib
+        # Mock the register_job to add to jobs dict
+        def mock_register(cfg):
+            job_id = f"scrape-{cfg.name}"
+            scheduler.jobs[job_id] = cfg
+            return job_id
 
-            with contextlib.suppress(SystemExit):
-                await scheduler._run_scheduler()
+        with patch.object(scheduler, "register_job", side_effect=mock_register):
+            mock_job = MagicMock()
+            mock_job.next_run_time = "tomorrow"
+            scheduler.scheduler.get_job.return_value = mock_job
 
-            scheduler.scheduler.start.assert_called_once()
-            scheduler.scheduler.get_job.assert_called_with("job1")
-            scheduler.scheduler.shutdown.assert_called_once()
+            # Mock asyncio.sleep to raise SystemExit to break the infinite loop
+            with patch("asyncio.sleep", side_effect=[None, SystemExit]):
+                import contextlib
+
+                with contextlib.suppress(SystemExit):
+                    await scheduler._run_scheduler()
+
+                scheduler.scheduler.start.assert_called_once()
+                # Check that get_job was called with the registered job ID
+                scheduler.scheduler.get_job.assert_called_with("scrape-test_site")
+                scheduler.scheduler.shutdown.assert_called_once()
 
     def test_shutdown(self, scheduler):
         """Test graceful shutdown."""

@@ -138,14 +138,9 @@ class ScraperScheduler:
     def start(self):
         """Start the scheduler daemon."""
         logger.info("Starting scheduler daemon...")
-        self.load_schedules()
 
-        # Clean up old database records on startup
+        # Clean up old database records on startup (before loading schedules)
         self._cleanup_database()
-
-        if not self.jobs:
-            logger.warning("No scheduled jobs configured!")
-            logger.warning("At least one site must have schedule.enabled: true")
 
         # Run the scheduler initialization and main loop
         asyncio.run(self._run_scheduler())
@@ -153,7 +148,17 @@ class ScraperScheduler:
     async def _run_scheduler(self):
         """Run scheduler within an async context."""
         # Now we're inside a running event loop, so AsyncIOScheduler can be started
+        # This loads jobs from the database into memory
         self.scheduler.start()
+
+        # Load site configs and register new/updated jobs
+        # This must happen AFTER scheduler.start() so we can see what jobs exist in DB
+        self.load_schedules()
+
+        if not self.jobs:
+            logger.warning("No scheduled jobs configured!")
+            logger.warning("At least one site must have schedule.enabled: true")
+
         logger.info(f"Scheduler started with {len(self.jobs)} job(s)")
 
         # Print schedule summary
