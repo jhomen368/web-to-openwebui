@@ -16,6 +16,11 @@ RUN pip install --upgrade pip --no-cache-dir && \
 FROM python:3.12-slim-bookworm AS runtime
 WORKDIR /app
 
+# Upgrade system packages to get latest security patches
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    rm -rf /var/lib/apt/lists/*
+
 # Install runtime dependencies for Playwright/Chromium
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \

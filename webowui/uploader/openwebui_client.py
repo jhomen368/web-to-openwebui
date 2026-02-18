@@ -1142,6 +1142,25 @@ class OpenWebUIClient:
             logger.info(f"  Cleanup enabled: Will remove untracked files from {site_name}/ folder")
 
         # Get or create knowledge
+        # BUGFIX: Validate knowledge_id exists before using it
+        if knowledge_id:
+            logger.info(f"Validating knowledge {knowledge_id} exists...")
+            # Check if knowledge base actually exists by attempting to get its files
+            validation_check = await self.get_knowledge_files(knowledge_id)
+            if validation_check is None:
+                # Knowledge base doesn't exist (likely deleted or OpenWebUI was reset)
+                logger.warning(
+                    f"⚠ Knowledge {knowledge_id} not found (400 error)\n"
+                    f"  This usually means:\n"
+                    f"  - Knowledge base was deleted from OpenWebUI\n"
+                    f"  - OpenWebUI was reset/migrated\n"
+                    f"  - Stale reference in upload_status.json\n"
+                    f"  Creating NEW knowledge base instead..."
+                )
+                knowledge_id = None  # Force creation of new knowledge base
+            else:
+                logger.info(f"✓ Knowledge {knowledge_id} exists ({len(validation_check)} files)")
+
         if knowledge_id:
             logger.info(f"Using existing knowledge: {knowledge_id}")
             knowledge: dict | None = {"id": knowledge_id, "name": knowledge_name}
@@ -1442,6 +1461,21 @@ class OpenWebUIClient:
             return {"error": "No markdown files found to upload"}
 
         # Get or create knowledge
+        # BUGFIX: Validate knowledge_id exists before using it
+        if knowledge_id:
+            logger.info(f"Validating knowledge {knowledge_id} exists...")
+            # Check if knowledge base actually exists by attempting to get its files
+            validation_check = await self.get_knowledge_files(knowledge_id)
+            if validation_check is None:
+                # Knowledge base doesn't exist (likely deleted or OpenWebUI was reset)
+                logger.warning(
+                    f"⚠ Knowledge {knowledge_id} not found (400 error)\n"
+                    f"  Creating NEW knowledge base instead..."
+                )
+                knowledge_id = None  # Force creation of new knowledge base
+            else:
+                logger.info(f"✓ Knowledge {knowledge_id} exists ({len(validation_check)} files)")
+
         if knowledge_id:
             logger.info(f"Using existing knowledge: {knowledge_id}")
             knowledge: dict | None = {"id": knowledge_id}
