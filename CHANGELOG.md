@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2026-02-18
+
+### 🔒 Security
+
+- **System Library Updates**: Added `apt-get upgrade` to Docker build process to address critical base image vulnerabilities:
+
+### � Bug Fixes
+
+- **Upload Validation**: Fixed a critical bug where uploads would silently fail when knowledge base ID was stale (deleted or no longer exists in OpenWebUI).
+  - Added automatic knowledge base validation before upload operations
+  - Application now detects when a knowledge_id doesn't exist (400 error)
+  - Automatically creates a new knowledge base instead of failing silently
+  - Clear warning messages explain when and why a new KB was created
+  - Prevents false success logs when upload actually failed
+  - Affects both incremental and full upload methods
+
+### 📝 Notes
+
+This release includes security patches for the Docker base image and fixes a silent failure mode discovered in production.
+
+**Upload Fix:** When a knowledge base was deleted from OpenWebUI (or OpenWebUI was reset), the scraper would continue attempting uploads to the non-existent KB, receiving 400 errors, but logging "✓ Upload complete!" - giving false success indicators.
+
+**How it worked before (buggy):**
+1. Pod scrapes successfully ✅
+2. Attempts upload to stale knowledge_id (doesn't exist)
+3. Gets 400 error from OpenWebUI ❌
+4. Logs "✓ Upload complete!" despite failure ❌
+5. No knowledge base in OpenWebUI ❌
+
+**How it works now (fixed):**
+1. Pod scrapes successfully ✅
+2. Validates knowledge_id exists before upload ✅
+3. If not found (400), warns user and creates new KB ✅
+4. Uploads successfully to new KB ✅
+5. Knowledge base populated correctly ✅
+
+## [1.0.4] - 2026-02-18
+
+### 🐛 Bug Fixes
+
+- **Scheduler Initialization**: Fixed scheduler startup sequence where job loading was happening before scheduler initialization, causing jobs to not be registered properly.
+  - Moved `load_schedules()` call to after scheduler initialization
+  - Ensures all scheduled jobs are properly registered on startup
+  - Prevents race condition in scheduler daemon
+
+### 📝 Notes
+
+This is a minor bug fix discovered during production deployment testing. The fix ensures scheduled scrapes start correctly on daemon startup.
+
 ## [1.0.3] - 2026-02-12
 
 ### 🐛 Bug Fixes
