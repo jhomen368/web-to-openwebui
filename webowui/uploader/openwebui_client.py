@@ -444,7 +444,15 @@ class OpenWebUIClient:
                     }
                 else:
                     error_text = await response.text()
-                    logger.error(f"✗ Failed batch add: {response.status} - {error_text}")
+                    # Check for known OpenWebUI backend bug
+                    if "process_files_batch" in error_text:
+                        logger.warning(
+                            f"⚠ Batch add failed - OpenWebUI backend bug detected:\n"
+                            f"   {error_text[:200]}\n"
+                            f"   Falling back to individual adds (will still work)..."
+                        )
+                    else:
+                        logger.error(f"✗ Failed batch add: {response.status} - {error_text}")
                     # Fall back to individual adds
                     return await self._add_files_individually(knowledge_id, file_ids)
 
@@ -1195,13 +1203,32 @@ class OpenWebUIClient:
         # Phase 2: Process files to upload (new and modified)
         new_files = []
         modified_files = []
+        skipped_count = 0
 
         for file_info in files_to_upload:
             url = file_info["url"]
-            file_path = scrape_dir / file_info["filename"]
+
+            # Get filepath with explicit validation
+            filepath = file_info.get("filepath") or file_info.get("filename")
+            if not filepath:
+                logger.error(
+                    f"✗ Missing filepath/filename in metadata for URL: {url}\n"
+                    f"   This indicates corrupted metadata - file will be skipped"
+                )
+                skipped_count += 1
+                continue
+
+            file_path = scrape_dir / filepath
 
             if not file_path.exists():
-                logger.warning(f"File not found: {file_path}")
+                logger.error(
+                    f"✗ File not found and SKIPPED: {file_path}\n"
+                    f"   URL: {url}\n"
+                    f"   scrape_dir: {scrape_dir}\n"
+                    f"   filepath: {file_info.get('filepath', 'MISSING')}\n"
+                    f"   filename: {file_info.get('filename', 'MISSING')}"
+                )
+                skipped_count += 1
                 continue
 
             if url in previous_file_map:
@@ -1210,6 +1237,13 @@ class OpenWebUIClient:
             else:
                 # New file - upload
                 new_files.append((file_path, file_info))
+
+        # Alert if files were skipped due to path issues
+        if skipped_count > 0:
+            logger.error(
+                f"⚠ CRITICAL PATH BUG: {skipped_count}/{len(files_to_upload)} files SKIPPED!\n"
+                f"   Files exist but paths don't match - this is a metadata/path resolution bug."
+            )
 
         # NEW: Pre-verify modified files exist before updating (reconciliation)
         externally_deleted = []

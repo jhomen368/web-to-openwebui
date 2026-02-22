@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2026-02-22
+
+### 🐛 Bug Fixes
+
+- **Critical Path Resolution Fix**: Fixed a critical bug in incremental upload that caused all files to be skipped during upload to OpenWebUI.
+  - **Root Cause**: The upload code was using the `filename` field (e.g., `poe2/atlas-tree.md`) to construct file paths, but files are actually stored in the `content/` subdirectory (e.g., `content/poe2/atlas-tree.md`).
+  - **Impact**: All incremental uploads were failing silently - scheduler showed "30 files to upload" but uploaded 0 files.
+  - **Fix**: Changed `openwebui_client.py` line 1210 to use the `filepath` field (which includes the `content/` prefix) with fallback to `filename` for backward compatibility.
+  - **Verification**: All 379 unit tests pass, verified with local test data showing 10/10 files found after fix vs 0/10 before.
+  - **Affects**: Kubernetes deployments where scheduled uploads were running but not actually uploading any files to the knowledge base.
+
+### 📝 Notes
+
+This is a critical bug fix for production deployments. If you've been running scheduled scrapes but noticed your OpenWebUI knowledge base wasn't updating, this release fixes that issue.
+
+**How it was failing (before 1.0.6):**
+1. Scheduler runs scrape successfully ✅
+2. Shows "30 files to upload" in logs ✅
+3. Tries to find files using wrong path (without `content/` prefix) ❌
+4. All files skipped: "File not found" errors ❌
+5. Knowledge base stays empty ❌
+
+**How it works now (1.0.6):**
+1. Scheduler runs scrape successfully ✅
+2. Shows "30 files to upload" in logs ✅
+3. Finds files using correct path (with `content/` prefix) ✅
+4. Uploads all files successfully ✅
+5. Knowledge base populated correctly ✅
+
 ## [1.0.5] - 2026-02-18
 
 ### 🔒 Security
