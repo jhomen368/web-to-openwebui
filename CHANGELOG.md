@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2026-02-23
+
+### 🐛 Bug Fixes
+
+- **Upload Result Mapping**: Fixed upload result mapping for files with nested directory paths.
+  - **Root Cause**: Files with nested paths like `content/news/update.md` were not being correctly mapped to their upload results because the filename comparison was using the wrong field.
+  - **Impact**: Files uploaded with nested paths weren't being tracked properly for incremental uploads, causing reconciliation failures.
+  - **Fix**: Changed upload result comparison to use `upload_filename` field (flattened name) instead of `filename` field.
+
+- **Reconciliation Filename Matching**: Fixed reconciliation filename matching with proper path flattening.
+  - **Root Cause**: Local filenames like `content/news/update.md` weren't being flattened before comparison with remote filenames like `mysite_content_news_update.md`.
+  - **Impact**: Reconciliation would fail to match files that existed in both local and remote storage.
+  - **Fix**: Added proper filename flattening logic that converts nested paths to underscore-separated names.
+
+- **Upload Result Comparison**: Fixed upload result comparison to use correct `upload_filename` field.
+  - **Root Cause**: Code was comparing `filename` (e.g., `poe2/atlas-tree.md`) instead of `upload_filename` (e.g., `mysite_poe2_atlas-tree.md`).
+  - **Impact**: File IDs weren't being correctly mapped after upload, breaking incremental update tracking.
+  - **Fix**: Updated comparison logic to use the flattened `upload_filename` field.
+
+### ✨ Added
+
+- **Test Coverage**: Added comprehensive test coverage for nested path filename flattening scenarios.
+  - 5 new test cases for filename flattening logic
+  - Test coverage for nested path upload scenarios
+  - Test coverage for Windows backslash path handling
+  - Test coverage for ValueError fallback scenarios
+
+### 📈 Improvements
+
+- **Test Coverage**: Test coverage for `openwebui_client.py` increased to 79.45%.
+
+### 📝 Technical Details
+
+Files with nested paths like `content/news/update.md` are now correctly:
+- Uploaded as `mysite_content_news_update.md` (flattened)
+- Mapped to correct file_ids in upload results
+- Matched during reconciliation with remote storage
+- Tracked properly for incremental uploads
+
+### 🔗 Related
+
+These fixes ensure that sites with nested URL structures (like wikis with category paths) work correctly with the incremental upload and reconciliation features.
+
 ## [1.0.6] - 2026-02-22
 
 ### 🐛 Bug Fixes

@@ -840,6 +840,7 @@ class OpenWebUIClient:
             if filename_decoded and file_id:
                 # Strip site folder prefix to get relative path (using underscores in new format)
                 relative_filename = filename_decoded.removeprefix(f"{site_name}_")
+                # Store both the flattened version (for matching) and original
                 remote_filename_map[relative_filename] = {
                     "file_id": file_id,
                     "hash": f.get("hash"),
@@ -890,8 +891,10 @@ class OpenWebUIClient:
                 continue
 
             # Try to match by filename
-            if local_filename in remote_filename_map:
-                remote_info = remote_filename_map[local_filename]
+            # Flatten local filename to match remote format (slashes -> underscores)
+            local_filename_flattened = local_filename.replace("/", "_").replace("\\", "_")
+            if local_filename_flattened in remote_filename_map:
+                remote_info = remote_filename_map[local_filename_flattened]
                 file_id = remote_info["file_id"]
                 file_id_map[url] = file_id
                 filename_matched_count += 1
@@ -1209,7 +1212,18 @@ class OpenWebUIClient:
             url = file_info["url"]
 
             # Get filepath with explicit validation
-            filepath = file_info.get("filepath") or file_info.get("filename")
+            # Prefer filename as it is relative to content_dir
+            # filepath is relative to output_dir (includes content/)
+            filepath = file_info.get("filename")
+
+            if not filepath:
+                # Fallback to filepath, but handle content/ prefix if present
+                raw_filepath = file_info.get("filepath")
+                if raw_filepath and str(raw_filepath).startswith("content/"):
+                    filepath = str(raw_filepath).replace("content/", "", 1)
+                else:
+                    filepath = raw_filepath
+
             if not filepath:
                 logger.error(
                     f"✗ Missing filepath/filename in metadata for URL: {url}\n"
@@ -1288,8 +1302,18 @@ class OpenWebUIClient:
                     new_file_ids.append(cast(str, file_id))
 
                     # Find which new_file this result corresponds to
+                    # Match by the full flattened upload filename, not just basename
                     for file_path, file_info in new_files:
-                        if file_path.name == result.get("filename"):
+                        # Construct the expected upload filename (same logic as _upload_file)
+                        try:
+                            relative_path = file_path.relative_to(scrape_dir)
+                            expected_upload_name = f"{site_name}_{relative_path}".replace(
+                                "\\", "_"
+                            ).replace("/", "_")
+                        except ValueError:
+                            expected_upload_name = f"{site_name}_{file_path.name}"
+
+                        if expected_upload_name == result.get("upload_filename"):
                             new_file_map[file_info["url"]] = cast(str, file_id)
                             break
 

@@ -1447,3 +1447,258 @@ async def test_network_timeout_handling(client, mock_session):
     mock_session.get.side_effect = Exception("Timeout")
 
     assert await client.test_connection() is False
+
+
+# ============================================================================
+# Nested Path Filename Flattening Tests
+# ============================================================================
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_upload_files_nested_path(client, mock_session, tmp_dir: Path):
+    """Test uploading files with nested directory paths to verify filename flattening works correctly.
+
+    Scenario:
+    - File at: content/news/update.md
+    - Should upload as: mysite_news_update.md (flattened)
+    - Verify upload_filename field in result
+    """
+    # Create nested directory structure
+    content_dir = tmp_dir / "content"
+    content_dir.mkdir()
+    news_dir = content_dir / "news"
+    news_dir.mkdir()
+    file_path = news_dir / "update.md"
+    file_path.write_text("# News Update")
+
+    # Setup mock response
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.json.return_value = {"id": "file-nested-123"}
+    mock_session.post.return_value.__aenter__.return_value = mock_response
+
+    result = await client.upload_files(
+        [file_path],
+        site_name="mysite",
+        base_content_dir=content_dir,
+    )
+
+    assert len(result) == 1
+    assert result[0]["file_id"] == "file-nested-123"
+    # Verify filename is flattened: mysite_news_update.md
+    assert result[0]["upload_filename"] == "mysite_news_update.md"
+    assert result[0]["filename"] == "update.md"
+
+    # Verify the upload was called
+    mock_session.post.assert_called_once()
+    # The upload_filename is calculated correctly (verified above)
+    # Note: FormData object doesn't expose filename in string representation
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_match_and_reconcile_nested_path(client, mock_session):
+    """Test reconciliation with nested paths to verify local filename flattening matches remote files.
+
+    Scenario:
+    - Local file: news/update.md
+    - Remote file: site_news_update.md (already flattened with site prefix)
+    - Should match correctly after flattening
+    """
+    local_metadata = {
+        "files": [
+            {
+                "url": "http://test.com/news/update",
+                "filename": "news/update.md",  # Nested path with forward slash
+                "checksum": "hash_nested",
+            }
+        ]
+    }
+
+    # Mock remote files - already flattened with site prefix
+    mock_response = AsyncMock(status=200)
+    mock_response.json.return_value = {
+        "items": [
+            {
+                "id": "file-nested-1",
+                "filename": "site_news_update.md",
+                "meta": {"name": "site_news_update.md"},
+            }
+        ]
+    }
+
+    # Mock file details (hashes)
+    mock_details = AsyncMock(status=200)
+    mock_details.json.return_value = {
+        "id": "file-nested-1",
+        "hash": "hash_nested",  # Same hash - perfect match
+        "meta": {"name": "site_news_update.md"},
+    }
+
+    mock_session.get.return_value.__aenter__.side_effect = [mock_response, mock_details]
+
+    result = await client.match_and_reconcile("kb-1", "site", local_metadata)
+
+    assert result["success"] is True
+    assert result["matched_count"] == 1
+    assert result["file_id_map"]["http://test.com/news/update"] == "file-nested-1"
+    assert result["confidence"] == "high"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_upload_scrape_incrementally_nested_path(client, mock_session, tmp_dir: Path):
+    """Test incremental upload with nested paths to verify upload result mapping works.
+
+    Scenario:
+    - File: content/news/update.md
+    - Verify file_id_map uses correct URL as key
+    - Verify upload result is correctly matched by flattened filename
+    """
+    # Create nested directory structure
+    content_dir = tmp_dir / "content"
+    content_dir.mkdir()
+    news_dir = content_dir / "news"
+    news_dir.mkdir()
+    file_path = news_dir / "update.md"
+    file_path.write_text("# News Update")
+
+    files_to_upload = [
+        {
+            "url": "http://test.com/news/update",
+            "filename": "news/update.md",  # Relative path with nested directory
+        }
+    ]
+
+    # Mock responses
+    # 1. Create KB
+    mock_list_kb = AsyncMock(status=200)
+    mock_list_kb.json.return_value = []
+    mock_create_kb = AsyncMock(status=200)
+    mock_create_kb.json.return_value = {"id": "kb-1", "name": "Test KB"}
+
+    # 2. Upload file
+    mock_upload = AsyncMock(status=200)
+    mock_upload.json.return_value = {"id": "file-nested-1"}
+
+    # 3. Get process status (wait)
+    mock_status = AsyncMock(status=200)
+    mock_status.json.return_value = {"status": "completed"}
+
+    # 4. Add to KB
+    mock_add = AsyncMock(status=200)
+    mock_add.json.return_value = {"success": True}
+
+    # Configure side effects
+    mock_session.get.return_value.__aenter__.side_effect = [
+        mock_list_kb,  # Check KB existence
+        mock_status,  # Check file status
+    ]
+    mock_session.post.return_value.__aenter__.side_effect = [
+        mock_create_kb,  # Create KB
+        mock_upload,  # Upload file
+        mock_add,  # Add to KB
+    ]
+
+    result = await client.upload_scrape_incrementally(
+        scrape_dir=content_dir,
+        site_name="test-site",
+        knowledge_name="Test KB",
+        files_to_upload=files_to_upload,
+        files_to_delete=[],
+        previous_file_map={},
+    )
+
+    assert result["success"] is True
+    assert result["files_uploaded"] == 1
+    # Verify the URL is correctly mapped to the file_id
+    assert result["file_id_map"]["http://test.com/news/update"] == "file-nested-1"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_match_and_reconcile_windows_paths(client, mock_session):
+    """Test Windows-style backslash paths are flattened correctly.
+
+    Scenario:
+    - Local file: news\\update.md (Windows backslash)
+    - Should flatten to: news_update.md
+    - Should match remote files correctly
+    """
+    local_metadata = {
+        "files": [
+            {
+                "url": "http://test.com/news/update",
+                "filename": "news\\update.md",  # Windows-style backslash
+                "checksum": "hash_windows",
+            }
+        ]
+    }
+
+    # Mock remote files - flattened with underscores
+    mock_response = AsyncMock(status=200)
+    mock_response.json.return_value = {
+        "items": [
+            {
+                "id": "file-win-1",
+                "filename": "site_news_update.md",
+                "meta": {"name": "site_news_update.md"},
+            }
+        ]
+    }
+
+    # Mock file details - different hash (content changed, but filename matches)
+    mock_details = AsyncMock(status=200)
+    mock_details.json.return_value = {
+        "id": "file-win-1",
+        "hash": "hash_different",  # Different hash - will match by filename
+        "meta": {"name": "site_news_update.md"},
+    }
+
+    mock_session.get.return_value.__aenter__.side_effect = [mock_response, mock_details]
+
+    result = await client.match_and_reconcile("kb-1", "site", local_metadata)
+
+    assert result["success"] is True
+    assert result["matched_count"] == 1
+    # Should match by filename after flattening backslash to underscore
+    assert result["file_id_map"]["http://test.com/news/update"] == "file-win-1"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_upload_files_path_not_relative_to_base(client, mock_session, tmp_dir: Path):
+    """Test ValueError fallback when file is not relative to base_content_dir.
+
+    Scenario:
+    - File outside base_content_dir
+    - Should fall back to: mysite_filename.md (just basename)
+    """
+    # Create a file outside the content directory
+    other_dir = tmp_dir / "other"
+    other_dir.mkdir()
+    file_path = other_dir / "external.md"
+    file_path.write_text("# External Content")
+
+    # Create a separate content directory (file is NOT under this)
+    content_dir = tmp_dir / "content"
+    content_dir.mkdir()
+
+    # Setup mock response
+    mock_response = AsyncMock()
+    mock_response.status = 200
+    mock_response.json.return_value = {"id": "file-external-123"}
+    mock_session.post.return_value.__aenter__.return_value = mock_response
+
+    result = await client.upload_files(
+        [file_path],
+        site_name="mysite",
+        base_content_dir=content_dir,  # File is NOT relative to this dir
+    )
+
+    assert len(result) == 1
+    assert result[0]["file_id"] == "file-external-123"
+    # Should fall back to just basename with site prefix
+    assert result[0]["upload_filename"] == "mysite_external.md"
+    assert result[0]["filename"] == "external.md"
