@@ -397,18 +397,18 @@ class OpenWebUIClient:
 
                 for kb in matching_kbs:
                     kb_id = cast(str, kb["id"])
-                    # Check if this KB has files in our site folder
+                    # Check if this KB has files from our site (filename prefix filtering)
                     files = await self.get_knowledge_files(kb_id, site_folder=site_name)
 
                     if files and len(files) > 0:
                         logger.info(
-                            f"Found knowledge base with {len(files)} files in {site_name}/ folder (ID: {kb_id})"
+                            f"Found knowledge base with {len(files)} files from {site_name}_ prefix (ID: {kb_id})"
                         )
                         return kb_id
 
                 # None of the KBs have our files - use first one as default
                 logger.warning(
-                    f"No knowledge base contains files from {site_name}/, using first match"
+                    f"No knowledge base contains files from {site_name}_ prefix, using first match"
                 )
                 return cast(str, matching_kbs[0]["id"])
 
@@ -721,7 +721,7 @@ class OpenWebUIClient:
             }
 
         remote_count = len(remote_files)
-        logger.info(f"Remote: {remote_count} files in {site_name}/ folder")
+        logger.info(f"Remote: {remote_count} files from {site_name}_ prefix")
 
         # If no local metadata provided, state is missing
         if not local_metadata:
@@ -1351,13 +1351,11 @@ class OpenWebUIClient:
         # NEW: Phase 4: Cleanup untracked files in site folder
         deleted_untracked = 0
         if cleanup_untracked and not keep_files:
-            logger.info(f"Checking for untracked files in {site_name}/ folder...")
-            remote_files = await self.get_knowledge_files(knowledge_id)
+            logger.info(f"Checking for untracked files in {site_name}_ prefix...")
+            remote_files = await self.get_knowledge_files(knowledge_id, site_folder=site_name)
 
             if remote_files:
                 # Filter to only files in this site's folder
-                import urllib.parse
-
                 site_folder = f"{site_name}_"
                 untracked_file_ids = []
 

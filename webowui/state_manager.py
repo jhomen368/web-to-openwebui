@@ -307,8 +307,8 @@ class StateManager:
 
         logger.info(f"Syncing {site_name} with knowledge {target_kb_id}")
 
-        # Get remote state from OpenWebUI
-        remote_files = await self.client.get_knowledge_files(target_kb_id)
+        # Get remote state from OpenWebUI (filtered by site folder)
+        remote_files = await self.client.get_knowledge_files(target_kb_id, site_folder=site_name)
         if remote_files is None:
             return {"success": False, "error": "Failed to get remote knowledge state"}
 
