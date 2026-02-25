@@ -161,7 +161,7 @@ jobs:
 
       - name: Security Scan (Main Branch)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: aquasecurity/trivy-action@0.34.0
+        uses: aquasecurity/trivy-action@0.34.1
         with:
           image-ref: web-to-openwebui:test
           format: 'sarif'
@@ -182,7 +182,7 @@ jobs:
 
       - name: Security Scan Summary
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: aquasecurity/trivy-action@0.34.0
+        uses: aquasecurity/trivy-action@0.34.1
         with:
           image-ref: web-to-openwebui:test
           format: 'table'
