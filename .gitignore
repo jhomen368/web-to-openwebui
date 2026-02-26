@@ -65,3 +65,9 @@ pytest.ini
 # Docker
 docker-compose.override.yml
 .docker/
+
+# Markdown
+*.md
+!docs/*.md
+!README.md
+!CHANGELOG.md
