@@ -1351,23 +1351,17 @@ class OpenWebUIClient:
         # NEW: Phase 4: Cleanup untracked files in site folder
         deleted_untracked = 0
         if cleanup_untracked and not keep_files:
-            logger.info(f"Checking for untracked files in {site_name}_ prefix...")
+            logger.info(f"Checking for untracked files with '{site_name}_' prefix...")
             remote_files = await self.get_knowledge_files(knowledge_id, site_folder=site_name)
 
             if remote_files:
-                # Filter to only files in this site's folder
-                site_folder = f"{site_name}_"
                 untracked_file_ids = []
 
                 for f in remote_files:
                     file_id = f["id"]
-                    # Get filename and decode it
-                    filename_encoded = f.get("meta", {}).get("name", "")
-                    filename = urllib.parse.unquote(filename_encoded) if filename_encoded else ""
-
-                    # Check if in our folder and not in our tracking
-                    if filename.startswith(site_folder) and file_id not in new_file_map.values():
-                        untracked_file_ids.append((file_id, filename))
+                    # Check if this file is in our new state
+                    if file_id not in new_file_map.values():
+                        untracked_file_ids.append((file_id, f.get("meta", {}).get("name", f["id"])))
 
                 if untracked_file_ids:
                     logger.info(
