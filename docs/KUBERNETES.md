@@ -174,6 +174,8 @@ spec:
       labels:
         app: web-to-openwebui
     spec:
+      securityContext:
+        fsGroup: 1000   # Required: allows scraper user (uid 1000) to write to mounted PVC
       containers:
         - name: web-to-openwebui
           image: ghcr.io/jhomen368/web-to-openwebui:v1.0.0
@@ -210,6 +212,21 @@ spec:
           configMap:
             name: webowui-sites
 ```
+
+> **⚠️ Critical Security Context Requirement**
+>
+> The deployment example above includes `securityContext.fsGroup: 1000`. This is **required** and should never be omitted.
+>
+> **Why?**
+> * The container runs as a non-root user `scraper` with UID/GID 1000 (defined in [`Dockerfile`](Dockerfile))
+> * Fresh PVCs mount as `root:root` by default in Kubernetes
+> * Without `fsGroup: 1000`, the non-root user cannot write to mounted volumes
+> * Omitting this causes `PermissionError: [Errno 13] Permission denied: '/app/data/outputs'` on fresh PVCs
+>
+> **What it does:**
+> `fsGroup: 1000` tells Kubernetes to set the volume's group ownership to match the container's user, ensuring the scraper user can write to the data directory.
+>
+
 
 ## Configuration
 
