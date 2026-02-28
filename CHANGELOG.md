@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.9] - 2026-02-28
+
+### 🐛 Bug Fixes
+
+- **File ID Mapping in Full Uploads**: Fixed critical bug where file_ids were not being saved to upload_status.json after full uploads.
+  - **Root Cause**: The `upload_scrape_to_knowledge()` function was using placeholder filenames (e.g., "poe2.md") instead of actual URLs (e.g., "https://maxroll.gg/poe2") as keys in the file_id_map.
+  - **Impact**: After running `--full` upload, subsequent incremental uploads couldn't track which files had been uploaded because the file_id mapping was broken. This caused all files to be re-uploaded on every incremental run.
+  - **Fix**: Modified `upload_scrape_to_knowledge()` to load metadata.json and build a proper filename→URL mapping, then use real URLs as keys in file_id_map.
+  - **Recovery**: Run `rebuild-state` command to reconstruct file_id mappings from OpenWebUI, or perform a fresh full upload after deploying this fix.
+
+### 📝 Technical Details
+
+The bug was in the file_id_map construction:
+- **Before (broken)**: `file_id_map["poe2.md"] = "abc123"` (filename as key)
+- **After (fixed)**: `file_id_map["https://maxroll.gg/poe2"] = "abc123"` (URL as key)
+
+This ensures `save_upload_status()` can properly match and save file_ids after full uploads.
+
+## [1.0.8] - 2026-02-25
+
+### ✨ Added
+
+- **Site Folder Filtering**: Added site folder filtering support for knowledge base operations.
+  - Enables filtering files by site-specific folder prefixes in OpenWebUI knowledge bases
+  - Improves file management for multi-site configurations
+  - Supports cleaner separation of site content in shared knowledge bases
+
+### ♻️ Refactored
+
+- **Untracked File Cleanup**: Removed redundant site folder prefix filtering in untracked file cleanup logic.
+  - Simplified the cleanup process by removing duplicate filtering logic
+  - Improved consistency with site folder filtering approach
+  - Maintains backward compatibility with existing deployments
+
 ## [1.0.7] - 2026-02-23
 
 ### 🐛 Bug Fixes
@@ -83,7 +117,7 @@ This is a critical bug fix for production deployments. If you've been running sc
 
 - **System Library Updates**: Added `apt-get upgrade` to Docker build process to address critical base image vulnerabilities:
 
-### � Bug Fixes
+### 🐛 Bug Fixes
 
 - **Upload Validation**: Fixed a critical bug where uploads would silently fail when knowledge base ID was stale (deleted or no longer exists in OpenWebUI).
   - Added automatic knowledge base validation before upload operations

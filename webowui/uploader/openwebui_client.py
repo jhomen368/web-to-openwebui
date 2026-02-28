@@ -1559,15 +1559,39 @@ class OpenWebUIClient:
         add_result = await self.add_files_to_knowledge_batch(knowledge_id, file_ids)
 
         # Build file_id_map for tracking
+        # Load metadata.json to get filename → URL mapping
+        metadata_file = scrape_dir.parent / "metadata.json"
+        filename_to_url = {}
+        if metadata_file.exists():
+            with open(metadata_file) as f:
+                metadata = json.load(f)
+                for file_info in metadata.get("files", []):
+                    filename = file_info.get("filename")
+                    url = file_info.get("url")
+                    if filename and url:
+                        # Store both original and flattened versions for matching
+                        filename_to_url[filename] = url
+                        flattened = filename.replace("/", "_").replace("\\", "_")
+                        filename_to_url[flattened] = url
+
+        # Build file_id_map with real URLs
         file_id_map = {}
         for result in upload_results:
-            # Try to extract URL from upload_filename
             upload_filename = result.get("upload_filename", "")
-            # Remove site prefix to get relative path
-            relative_path = upload_filename.removeprefix(f"{site_name}/")
-            # Construct URL (this is approximate - real URL might differ)
-            url = f"{relative_path}"  # Placeholder URL
-            file_id_map[url] = result.get("file_id")
+            # Strip site prefix: "maxroll_poe2_guides_artisan.md" → "guides_artisan.md"
+            relative_filename = upload_filename.removeprefix(f"{site_name}_")
+
+            # Look up the real URL from metadata
+            url = filename_to_url.get(relative_filename)
+            if url:
+                file_id_map[url] = result.get("file_id")
+            else:
+                # Fallback for backwards compatibility or if metadata missing
+                logger.warning(
+                    f"Could not find URL for {relative_filename} in metadata, "
+                    f"using filename as fallback"
+                )
+                file_id_map[relative_filename] = result.get("file_id")
 
         return {
             "success": True,
