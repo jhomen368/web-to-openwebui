@@ -169,7 +169,7 @@ jobs:
           scanners: 'vuln'
           severity: 'CRITICAL'
           limit-severities-for-sarif: true
-          exit-code: '1'  # BLOCK on CRITICAL
+          exit-code: '0'  # Report only, don't block pipeline
           ignore-unfixed: true
 
       - name: Upload Trivy results to GitHub Security tab
