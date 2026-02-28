@@ -10,7 +10,6 @@ permissions:
   contents: read
   packages: read
   security-events: write
-  issues: write
 
 jobs:
   scan-published-images:
@@ -60,50 +59,3 @@ jobs:
           else
             echo "✅ No CRITICAL vulnerabilities found in ${{ matrix.tag }} image"
           fi
-
-      - name: Create issue if CRITICAL vulnerabilities found
-        if: always() && steps.check.outputs.count != '0'
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const critCount = '${{ steps.check.outputs.count }}';
-            const tag = '${{ matrix.tag }}';
-
-            // Check if issue already exists
-            const issues = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              labels: 'security,automated'
-            });
-
-            const existingIssue = issues.data.find(issue =>
-              issue.title.includes(`CRITICAL vulnerabilities in ${tag} image`)
-            );
-
-            if (!existingIssue) {
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: `🔒 CRITICAL vulnerabilities found in ${tag} image`,
-                body: `## Security Scan Results
-
-                **Image**: \`ghcr.io/${{ github.repository }}:${tag}\`
-                **CRITICAL Vulnerabilities Found**: ${critCount}
-                **Scan Date**: ${new Date().toISOString()}
-
-                ### Action Required
-
-                CRITICAL severity vulnerabilities have been detected in the published Docker image. These require immediate attention.
-
-                **Next Steps**:
-                1. Review the [Security tab](https://github.com/${{ github.repository }}/security/code-scanning) for details
-                2. Update vulnerable dependencies in \`requirements.txt\`
-                3. Rebuild and republish the Docker image
-                4. Close this issue after fixes are deployed
-
-                **Related Workflow**: [Scheduled Security Scan](https://github.com/${{ github.repository }}/actions/workflows/security-scan-scheduled.yml)
-                `,
-                labels: ['security', 'automated', 'vulnerability']
-              });
-            }
