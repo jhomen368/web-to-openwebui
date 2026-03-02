@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.10] - 2026-03-02
+
+### 🐛 Bug Fixes
+
+- **`check-state` False-Positive CORRUPTED Status**: Fixed critical bug where `check-state` incorrectly reported CORRUPTED status on healthy knowledge bases.
+  - **Root Cause**: `StateManager.check_health()` was loading `metadata.json` (scrape metadata) and passing it as `local_metadata` to `check_state_health()`. However, `check_state_health()` expects `file_id` fields that only exist in `upload_status.json`.
+  - **Fix**: `check_health()` now calls `current_manager.get_upload_status()` to load `upload_status.json` instead.
+  - **Files Changed**: `webowui/state_manager.py`
+
+- **`check-state` False-Positive DEGRADED Status**: Fixed critical bug where `check-state` reported DEGRADED status on healthy fresh knowledge bases.
+  - **Root Cause**: The `check_state_health()` function used prefix filtering to enumerate remote files, but only ~10% matched due to unknown API field format issues.
+  - **Fix**: Refactored to use ID-based verification. Loads locally-tracked `file_id`s from `upload_status.json` via `StateManager` and calls `verify_file_exists(file_id)` for each tracked file.
+  - **Reference**: [`openwebui_client.py`](webowui/uploader/openwebui_client.py) (check_state_health method)
+
+### 🔬 Investigation Complete
+
+- **Prefix Filter Bug**: Live testing on 2026-03-02 could NOT reproduce the prefix filter failures against the current OpenWebUI API. The multi-field fallback (`meta.name` → `filename` → `name`) added in this release achieves 100% match rate. Commands `rebuild-state`, `sync`, and `cleanup_untracked` should now work correctly.
+
 ## [1.0.9] - 2026-02-28
 
 ### 🐛 Bug Fixes

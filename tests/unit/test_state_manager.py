@@ -516,6 +516,33 @@ class TestValidateRebuildConfidence:
         assert is_valid is False
 
 
+def _create_test_upload_status(
+    site_name: str, timestamp: str, num_files: int = 3
+) -> dict[str, Any]:
+    """Helper to create test upload_status with file_id fields (required for health check)."""
+    files = []
+    for i in range(num_files):
+        files.append(
+            {
+                "url": f"https://example.com/page{i}",
+                "filename": f"page{i}.md",
+                "filepath": f"content/page{i}.md",
+                "checksum": f"hash{i:04d}",
+                "size": 1024 * (i + 1),
+                "file_id": f"file-{i:04d}",  # Required for health verification
+            }
+        )
+
+    return {
+        "site_name": site_name,
+        "knowledge_id": "kb-123",
+        "knowledge_name": f"{site_name} Test",
+        "last_upload": timestamp,
+        "source_timestamp": timestamp,
+        "files": files,
+    }
+
+
 @pytest.mark.unit
 class TestCheckHealth:
     """Test check_health method."""
@@ -524,11 +551,12 @@ class TestCheckHealth:
     async def test_check_health_with_local_metadata(
         self, tmp_outputs_dir: Path, mock_openwebui_client
     ):
-        """Test health check with provided local metadata."""
+        """Test health check with provided local upload_status data (containing file_id)."""
         site_name = "test_wiki"
         current_manager = CurrentDirectoryManager(tmp_outputs_dir, site_name)
 
-        local_metadata = _create_test_metadata(site_name, "2025-11-20_01-00-00", 3)
+        # Use upload_status-shaped data with file_id fields (required by check_state_health)
+        local_metadata = _create_test_upload_status(site_name, "2025-11-20_01-00-00", 3)
 
         mock_openwebui_client.check_state_health = AsyncMock(
             return_value={
@@ -549,14 +577,17 @@ class TestCheckHealth:
         assert health["needs_rebuild"] is False
 
     @pytest.mark.asyncio
-    async def test_check_health_loads_metadata(self, tmp_outputs_dir: Path, mock_openwebui_client):
-        """Test health check loads metadata automatically."""
+    async def test_check_health_loads_upload_status(
+        self, tmp_outputs_dir: Path, mock_openwebui_client
+    ):
+        """Test health check loads upload_status.json automatically (not metadata.json)."""
         site_name = "test_wiki"
         current_dir = tmp_outputs_dir / site_name / "current"
         current_dir.mkdir(parents=True)
 
-        metadata = _create_test_metadata(site_name, "2025-11-20_01-00-00", 3)
-        save_json_file(current_dir / "metadata.json", metadata)
+        # Create upload_status.json (not metadata.json) - this is what check_health now loads
+        upload_status = _create_test_upload_status(site_name, "2025-11-20_01-00-00", 3)
+        save_json_file(current_dir / "upload_status.json", upload_status)
 
         current_manager = CurrentDirectoryManager(tmp_outputs_dir, site_name)
 
@@ -573,10 +604,39 @@ class TestCheckHealth:
         health = await state_mgr.check_health(
             knowledge_id="kb-123",
             site_name=site_name,
-            local_metadata=None,  # Will load automatically
+            local_metadata=None,  # Will load automatically from upload_status.json
         )
 
         assert health["status"] == "degraded"
+        assert health["needs_rebuild"] is True
+
+    @pytest.mark.asyncio
+    async def test_check_health_missing_upload_status(
+        self, tmp_outputs_dir: Path, mock_openwebui_client
+    ):
+        """Test health check returns 'missing' when upload_status.json doesn't exist."""
+        site_name = "test_wiki"
+        current_manager = CurrentDirectoryManager(tmp_outputs_dir, site_name)
+
+        # Don't create any upload_status.json - this simulates a fresh site with no uploads
+
+        mock_openwebui_client.check_state_health = AsyncMock(
+            return_value={
+                "status": "missing",
+                "needs_rebuild": True,
+                "issues": ["Local upload_status.json is missing"],
+            }
+        )
+
+        state_mgr = StateManager(current_manager, mock_openwebui_client)
+
+        health = await state_mgr.check_health(
+            knowledge_id="kb-123",
+            site_name=site_name,
+            local_metadata=None,  # Will try to load upload_status.json, find nothing
+        )
+
+        assert health["status"] == "missing"
         assert health["needs_rebuild"] is True
 
 

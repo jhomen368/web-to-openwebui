@@ -628,10 +628,21 @@ class OpenWebUIClient:
                         # Add None check before iteration
                         if files is not None:
                             for f in files:
-                                # Get filename from meta.name and decode it
-                                filename_encoded = f.get("meta", {}).get(
-                                    "name", f.get("filename", "")
-                                )
+                                # Multi-field fallback for filename extraction (DEBUG logging)
+                                filename_encoded = None
+                                matched_field = None
+
+                                # Try in order: meta.name, filename, name (top-level)
+                                if f.get("meta", {}).get("name"):
+                                    filename_encoded = f.get("meta", {}).get("name")
+                                    matched_field = "meta.name"
+                                elif f.get("filename"):
+                                    filename_encoded = f.get("filename")
+                                    matched_field = "filename"
+                                elif f.get("name"):
+                                    filename_encoded = f.get("name")
+                                    matched_field = "name"
+
                                 filename = (
                                     urllib.parse.unquote(filename_encoded)
                                     if filename_encoded
@@ -643,6 +654,15 @@ class OpenWebUIClient:
                                     # Store decoded filename for easier comparison
                                     f["decoded_filename"] = filename
                                     filtered_files.append(f)
+                                    logger.debug(
+                                        f"Prefix match: file_id={f.get('id', 'unknown')}, "
+                                        f"field={matched_field}, filename={filename[:50]}..."
+                                    )
+                                else:
+                                    logger.debug(
+                                        f"Prefix skipped: file_id={f.get('id', 'unknown')}, "
+                                        f"field={matched_field}, filename={filename[:50]}..."
+                                    )
 
                             logger.debug(
                                 f"Filtered {len(filtered_files)}/{len(files)} files in folder {site_folder}"
@@ -699,68 +719,86 @@ class OpenWebUIClient:
             - status: 'healthy', 'missing', 'corrupted', 'degraded'
             - needs_rebuild: bool
             - issues: list of issues found
-            - remote_file_count: count of remote files
-            - local_file_count: count of local files (if metadata provided)
+            - remote_verified: count of local files verified to exist on remote
+            - local_files: total count of locally tracked files
         """
         logger.info(f"Checking state health for {site_name}...")
 
         issues = []
-
-        # Check if we can access remote knowledge base
-        remote_files = await self.get_knowledge_files(
-            knowledge_id, include_hashes=True, site_folder=site_name
-        )
-
-        if remote_files is None:
-            return {
-                "status": "error",
-                "needs_rebuild": False,
-                "issues": ["Cannot access remote knowledge base"],
-                "remote_file_count": 0,
-                "local_file_count": 0,
-            }
-
-        remote_count = len(remote_files)
-        logger.info(f"Remote: {remote_count} files from {site_name}_ prefix")
+        locally_tracked_files = []
+        remote_verified_count = 0
 
         # If no local metadata provided, state is missing
-        if not local_metadata:
+        # Note: local_metadata being None means caller didn't provide it (try filesystem)
+        # local_metadata being an empty dict {} means caller explicitly passed nothing
+        if local_metadata is None:
             return {
                 "status": "missing",
                 "needs_rebuild": True,
                 "issues": ["Local upload_status.json is missing"],
-                "remote_file_count": remote_count,
-                "local_file_count": 0,
+                "remote_verified": 0,
+                "local_files": 0,
                 "recommendation": "Run rebuild-state to reconstruct from remote",
             }
 
-        local_files = local_metadata.get("files", [])
-        local_count = len(local_files)
-        logger.info(f"Local: {local_count} files tracked")
+        # Load locally-tracked files from provided metadata
+        locally_tracked_files = local_metadata.get("files", [])
+        logger.info(f"Local: {len(locally_tracked_files)} files tracked (from metadata)")
 
-        # Build maps for comparison
-        local_file_ids = {f.get("file_id") for f in local_files if "file_id" in f}
-        remote_file_ids = {f["id"] for f in remote_files}
+        # Verify each locally-tracked file exists on remote using file_id
+        if locally_tracked_files:
+            # Collect file_ids that have file_id field
+            file_ids_to_verify = [
+                f.get("file_id") for f in locally_tracked_files if f.get("file_id")
+            ]
 
-        # Check for discrepancies
-        missing_remote = local_file_ids - remote_file_ids
-        extra_remote = remote_file_ids - local_file_ids
+            if file_ids_to_verify:
+                logger.info(f"Verifying {len(file_ids_to_verify)} files on remote...")
 
-        if missing_remote:
-            issues.append(f"{len(missing_remote)} files in local state but missing from remote")
+                # Verify in batches to avoid overwhelming the API
+                batch_size = 10
+                for i in range(0, len(file_ids_to_verify), batch_size):
+                    batch = file_ids_to_verify[i : i + batch_size]
+                    results = await asyncio.gather(
+                        *[self.verify_file_exists(file_id) for file_id in batch],
+                        return_exceptions=True,
+                    )
 
-        if extra_remote:
-            issues.append(f"{len(extra_remote)} files in remote but not in local state")
+                    for file_id, result in zip(batch, results, strict=True):
+                        if isinstance(result, Exception):
+                            logger.error(f"Error verifying file {file_id}: {result}")
+                            issues.append(f"Verification error for file {file_id}")
+                        elif not result:
+                            # File not found on remote
+                            issues.append(f"File {file_id} missing from remote")
+                        else:
+                            remote_verified_count += 1
+
+                logger.info(
+                    f"Remote verified: {remote_verified_count}/{len(file_ids_to_verify)} files"
+                )
+            else:
+                logger.warning("No files with file_id found in local state")
+                issues.append("No files with file_id in local state")
+        else:
+            logger.info("No locally-tracked files")
 
         # Determine overall health
         if not issues:
             status = "healthy"
             needs_rebuild = False
-        elif len(missing_remote) == local_count:
-            # All local files are missing - complete state loss
-            status = "corrupted"
-            needs_rebuild = True
-        elif missing_remote or extra_remote:
+        elif len(locally_tracked_files) > 0 and remote_verified_count == 0:
+            # Distinguish between "no file_ids to verify" vs "all files missing from remote"
+            if not file_ids_to_verify:
+                # Local state has files but no file_id fields (legacy data) - not corrupted
+                status = "degraded"
+                needs_rebuild = False
+            else:
+                # All local files are missing - complete state loss
+                status = "corrupted"
+                needs_rebuild = True
+        elif remote_verified_count < len(locally_tracked_files):
+            # Some files missing but not all
             status = "degraded"
             needs_rebuild = False  # Can be fixed with sync, not full rebuild
         else:
@@ -771,10 +809,13 @@ class OpenWebUIClient:
             "status": status,
             "needs_rebuild": needs_rebuild,
             "issues": issues,
-            "remote_file_count": remote_count,
-            "local_file_count": local_count,
-            "missing_remote": len(missing_remote),
-            "extra_remote": len(extra_remote),
+            "remote_verified": remote_verified_count,
+            "local_files": len(locally_tracked_files),
+            # Backward compatibility aliases
+            "local_file_count": len(locally_tracked_files),
+            "remote_file_count": remote_verified_count,
+            "missing_remote": max(0, len(locally_tracked_files) - remote_verified_count),
+            "extra_remote": 0,  # Not applicable with ID-based verification
             "recommendation": (
                 "Run rebuild-state command" if needs_rebuild else "Run sync --fix to resolve"
             ),

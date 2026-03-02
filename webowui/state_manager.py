@@ -223,31 +223,30 @@ class StateManager:
         Check health of local upload state vs remote OpenWebUI state.
 
         This is a thin wrapper around OpenWebUIClient.check_state_health() that
-        automatically loads local metadata if not provided.
+        automatically loads local upload status if not provided.
 
         Args:
             knowledge_id: Knowledge base ID to check
             site_name: Site name for folder filtering
-            local_metadata: Optional local metadata (loaded automatically if None)
+            local_metadata: Optional local upload status (loaded automatically if None)
 
         Returns:
             Health status dict with:
             - status: 'healthy', 'missing', 'corrupted', 'degraded'
             - needs_rebuild: bool
             - issues: list of issues found
-            - remote_file_count: count of remote files
-            - local_file_count: count of local files
+            - remote_verified: count of local files verified to exist on remote
+            - local_files: total count of locally tracked files
+            - remote_file_count: alias for remote_verified (backward compatibility)
+            - local_file_count: alias for local_files (backward compatibility)
         """
-        # Load local metadata if not provided
+        # Load local upload_status.json if not provided
+        # Note: We need upload_status.json (not metadata.json) because it contains
+        # file_id mappings which are required for health verification
         if local_metadata is None:
-            metadata_file = self.current_manager.metadata_file
-            if metadata_file.exists():
-                try:
-                    with open(metadata_file) as f:
-                        local_metadata = json.load(f)
-                except Exception as e:
-                    logger.error(f"Failed to load metadata: {e}")
-                    local_metadata = None
+            local_metadata = self.current_manager.get_upload_status()
+            if local_metadata is None:
+                logger.warning("No upload_status.json found - state is missing")
 
         # Call API client health check
         return cast(

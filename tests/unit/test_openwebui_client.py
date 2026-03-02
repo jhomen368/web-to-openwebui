@@ -1158,7 +1158,7 @@ async def test_rebuild_state_inline_match_failure(client, mock_session):
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_check_state_health_healthy(client, mock_session):
-    """Test healthy state check."""
+    """Test healthy state check - all local file IDs verified on remote."""
     local_metadata = {
         "files": [
             {"file_id": "file-1", "filename": "test1.md"},
@@ -1166,32 +1166,18 @@ async def test_check_state_health_healthy(client, mock_session):
         ]
     }
 
-    # Mock remote files
-    mock_response = AsyncMock(status=200)
-    mock_response.json.return_value = {
-        "items": [
-            {"id": "file-1", "filename": "test1.md", "meta": {"name": "site_test1.md"}},
-            {"id": "file-2", "filename": "test2.md", "meta": {"name": "site_test2.md"}},
-        ]
-    }
+    # Mock verify_file_exists to return True for all files (they exist on remote)
+    # This is the new implementation pattern - verify each local file_id exists
+    with patch.object(client, "verify_file_exists", new_callable=AsyncMock) as mock_verify:
+        mock_verify.return_value = True  # All files exist on remote
 
-    # Mock file details
-    mock_details_1 = AsyncMock(status=200)
-    mock_details_1.json.return_value = {"id": "file-1", "meta": {"name": "site_test1.md"}}
-    mock_details_2 = AsyncMock(status=200)
-    mock_details_2.json.return_value = {"id": "file-2", "meta": {"name": "site_test2.md"}}
-
-    mock_session.get.return_value.__aenter__.side_effect = [
-        mock_response,
-        mock_details_1,
-        mock_details_2,
-    ]
-
-    result = await client.check_state_health("kb-1", "site", local_metadata)
+        result = await client.check_state_health("kb-1", "site", local_metadata)
 
     assert result["status"] == "healthy"
     assert result["needs_rebuild"] is False
     assert len(result["issues"]) == 0
+    assert result["remote_verified"] == 2
+    assert result["local_files"] == 2
 
 
 @pytest.mark.unit
@@ -1219,23 +1205,24 @@ async def test_check_state_health_corrupted(client, mock_session):
     """Test corrupted state (all local files missing from remote)."""
     local_metadata = {"files": [{"file_id": "file-1", "filename": "test1.md"}]}
 
-    # Mock remote files (empty)
-    mock_response = AsyncMock(status=200)
-    mock_response.json.return_value = {"items": []}
+    # Mock verify_file_exists to return False (file does NOT exist on remote)
+    # This is the new implementation pattern - verify each local file_id exists
+    with patch.object(client, "verify_file_exists", new_callable=AsyncMock) as mock_verify:
+        mock_verify.return_value = False  # File missing from remote
 
-    mock_session.get.return_value.__aenter__.return_value = mock_response
-
-    result = await client.check_state_health("kb-1", "site", local_metadata)
+        result = await client.check_state_health("kb-1", "site", local_metadata)
 
     assert result["status"] == "corrupted"
     assert result["needs_rebuild"] is True
     assert result["missing_remote"] == 1
+    assert result["remote_verified"] == 0
+    assert result["local_files"] == 1
 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_check_state_health_degraded(client, mock_session):
-    """Test degraded state (some files missing/extra)."""
+    """Test degraded state (some files missing from remote)."""
     local_metadata = {
         "files": [
             {"file_id": "file-1", "filename": "test1.md"},
@@ -1243,32 +1230,26 @@ async def test_check_state_health_degraded(client, mock_session):
         ]
     }
 
-    # Mock remote files (file-1 missing, file-3 extra)
-    mock_response = AsyncMock(status=200)
-    mock_response.json.return_value = {
-        "items": [
-            {"id": "file-2", "filename": "test2.md", "meta": {"name": "site_test2.md"}},
-            {"id": "file-3", "filename": "test3.md", "meta": {"name": "site_test3.md"}},
-        ]
-    }
+    # Mock verify_file_exists to return False for file-1 (missing) and True for file-2 (exists)
+    # This is the new implementation pattern - verify each local file_id exists
+    with patch.object(client, "verify_file_exists", new_callable=AsyncMock) as mock_verify:
+        # Return False for file-1 (doesn't exist), True for file-2 (exists)
+        async def verify_side_effect(file_id):
+            if file_id == "file-1":
+                return False  # Missing from remote
+            return True  # Exists on remote
 
-    mock_details_2 = AsyncMock(status=200)
-    mock_details_2.json.return_value = {"id": "file-2", "meta": {"name": "site_test2.md"}}
-    mock_details_3 = AsyncMock(status=200)
-    mock_details_3.json.return_value = {"id": "file-3", "meta": {"name": "site_test3.md"}}
+        mock_verify.side_effect = verify_side_effect
 
-    mock_session.get.return_value.__aenter__.side_effect = [
-        mock_response,
-        mock_details_2,
-        mock_details_3,
-    ]
-
-    result = await client.check_state_health("kb-1", "site", local_metadata)
+        result = await client.check_state_health("kb-1", "site", local_metadata)
 
     assert result["status"] == "degraded"
     assert result["needs_rebuild"] is False
-    assert result["missing_remote"] == 1  # file-1
-    assert result["extra_remote"] == 1  # file-3
+    assert result["missing_remote"] == 1  # file-1 missing
+    assert result["remote_verified"] == 1  # only file-2 verified
+    assert result["local_files"] == 2
+    # extra_remote is always 0 in new implementation (not applicable with ID-based verification)
+    assert result["extra_remote"] == 0
 
 
 # ============================================================================
