@@ -10,7 +10,7 @@ click>=8.1.0
 
 # Utilities
 python-slugify>=8.0.0
-markdownify>=0.11.0
+markdownify>=1.2.2
 
 # Testing
 pytest>=7.4.0
@@ -19,4 +19,4 @@ pytest-cov>=4.1.0
 
 # Optional: For advanced features
 apscheduler>=3.10.0  # For embedded scheduling
-sqlalchemy>=2.0.0    # Required by APScheduler for job persistence
+sqlalchemy>=2.0.50    # Required by APScheduler for job persistence
